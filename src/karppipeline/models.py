@@ -179,6 +179,7 @@ class PipelineConfig(BaseModel):
     # entry_word is not in this list and is always the first element, wether used directly or as alias
     fields: list[ConfiguredField]
     workdir: Path
+    limited_access: bool = False
 
     @property
     def modules(self) -> dict[str, object]:

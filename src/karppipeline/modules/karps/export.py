@@ -79,6 +79,8 @@ def create_karps_backend_config(
         backend_config["tags"] = karps_config.tags
     if pipeline_config.description:
         backend_config["description"] = pipeline_config.description.model_dump()
+    if pipeline_config.limited_access:
+        backend_config["limited_access"] = pipeline_config.limited_access
 
     with open(get_output_dir(pipeline_config.workdir) / f"{pipeline_config.resource_id}_karps.yaml", "w") as fp:
         yaml.dump(backend_config, fp)

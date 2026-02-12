@@ -28,16 +28,49 @@ def clean(configs: list["ConfigHandle"]) -> None:
 def cli():
     parser = argparse.ArgumentParser(
         prog="karp-pipeline",
-        description="""
-        Automatically picks up a config.yaml in current directory, 
-        checks for parents and children and runs the command on all 
-        resources this level and below.""",
+        # TODO I haven't figured out a way to make Argparse both respect newlines AND not do breaks inside words
+        # without writing extra code
+        description=f"""{bold("*")} Automatically picks up a config.yaml in current directory,
+        checks for parents and children and runs the command on all
+        resources this level and below.
+
+        {bold("*")} By default, if a command is invoked on multiple resources, the output
+        will be one row per resource and the verbose output will be redirected
+        to <resource_dir>/log/run.log. If a command is invoked on a single resource,
+        the output will be written to stdout. To override this
+        behavior use --no-compact or --compact. In addition,to switch from
+        human-readable output to JSON, use --json-output. The format of the output
+        does not affect verbosity or compactness.""",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True, metavar="")
     subparsers.metavar = "COMMAND"
 
     subparsers.add_parser("clean", help="remove genereated files")
+
+    def add_output_params(p: argparse.ArgumentParser):
+        group = p.add_mutually_exclusive_group()
+        group.add_argument(
+            "--no-compact",
+            help="Write all output to console. This is the default when running a single resource.",
+            action="store_const",
+            const="no_compact",
+            dest="compact_output",
+        )
+        group.add_argument(
+            "--compact",
+            help="Write one line per resource to console. This is the default when running a multiple resources.",
+            action="store_const",
+            const="compact",
+            dest="compact_output",
+        )
+        p.set_defaults(compact_output="default")
+        p.add_argument(
+            "--json-output",
+            help="Write output as one line of json per logging event.",
+            action="store_true",
+            default=False,
+        )
 
     def add_modules(p: argparse.ArgumentParser):
         p.add_argument(
@@ -52,6 +85,7 @@ def cli():
         help="prepares the material",
     )
     add_modules(p_run)
+    add_output_params(p_run)
 
     p_install = subparsers.add_parser(
         "install",
@@ -59,6 +93,7 @@ def cli():
         help="adds the material to the requested system",
     )
     add_modules(p_install)
+    add_output_params(p_install)
 
     args = parser.parse_args()
 
@@ -82,27 +117,34 @@ def cli():
     if len(args.modules) > 0:
         kwargs["subcommand"] = args.modules
 
-    silent = False
-    if len(configs) > 1:
-        silent = True
+    compact_output = False
+    if args.compact_output == "default":
+        if len(configs) > 1:
+            compact_output = True
+    else:
+        compact_output = args.compact_output == "compact"
     for config_handle in configs:
-        karps_logging.setup_resource_logging(config_handle.workdir, silent=silent)
+        karps_logging.setup_resource_logging(
+            config_handle.workdir, compact_output=compact_output, json_output=args.json_output
+        )
+        logger = logging.getLogger(__name__)
         try:
             config = load_config(config_handle)
             # run calls importers and exporters
-            if not silent:
+            if not compact_output:
                 if do_run:
-                    task_output = "Running"
+                    task_output = "Running "
                 elif do_install:
-                    task_output = "Installing"
+                    task_output = "Installing "
                 else:
                     task_output = "Unknown action"
-                print(task_output, config.resource_id)
+
+                logger.info(task_output + config.resource_id)
             if do_install:
                 install(config, **kwargs)
             elif do_run:
                 run(config, **kwargs)
-            if silent:
+            if compact_output:
                 # TODO inform user if there was warnings
                 print(f"{green_box()} {config.resource_id}\t success")
         except Exception as e:
@@ -110,7 +152,7 @@ def cli():
                 logging.getLogger("karppipeline").error(f"Exception for resource: {e.args[0]}")
             else:
                 logging.getLogger("karppipeline").error("Exception for resource", exc_info=True)
-            if silent:
+            if compact_output:
                 print(f"{red_box()} {config_handle.workdir}\t fail")
 
     return 0

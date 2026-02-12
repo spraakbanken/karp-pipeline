@@ -1,5 +1,4 @@
-import os
-import sys
+import argparse
 from typing import TYPE_CHECKING
 
 from karppipeline.common import ImportException, InstallException
@@ -27,26 +26,43 @@ def clean(configs: list["ConfigHandle"]) -> None:
 
 
 def cli():
-    os.system("")
-    if len(sys.argv) > 3:
-        help_text = []
-        help_text.append(f"{bold('Usage:')} karps-pipeline run/install")
-        help_text.append("")
-        help_text.append(f"{bold('run')} - prepares the material")
-        help_text.append(f"{bold('install')} - adds the material to the requested system")
-        help_text.append(f"{bold('clean')} - remove genereated files")
-        help_text.append("")
-        help_text.append("Subcommands:")
-        help_text.append("")
-        help_text.append("karps-pipeline install karps")
-        help_text.append("karps-pipeline install sbxrepo")
-        help_text.append("")
-        help_text.append(
-            "Automatically picks up a config.yaml in current directory, checks for parents and children and runs the command on all resources this level and below."
-        )
-        print("\n".join(help_text))
-        return 1
+    parser = argparse.ArgumentParser(
+        prog="karp-pipeline",
+        description="""
+        Automatically picks up a config.yaml in current directory, 
+        checks for parents and children and runs the command on all 
+        resources this level and below.""",
+    )
 
+    subparsers = parser.add_subparsers(dest="command", required=True, metavar="")
+    subparsers.metavar = "COMMAND"
+
+    subparsers.add_parser("clean", help="remove genereated files")
+
+    def add_modules(p: argparse.ArgumentParser):
+        p.add_argument(
+            "modules",
+            nargs="*",
+            help="Modules to invoke (default is to run modules resource config export.default/install)",
+        )
+
+    p_run = subparsers.add_parser(
+        "run",
+        description=f"Prepares the material from /source and places the resulting artifacts in {bold('/output')}. Does not have any side effects except creating files.",
+        help="prepares the material",
+    )
+    add_modules(p_run)
+
+    p_install = subparsers.add_parser(
+        "install",
+        description="Using the generated artifacts in /output, adds the materials to the requested system. Does not modify /output.",
+        help="adds the material to the requested system",
+    )
+    add_modules(p_install)
+
+    args = parser.parse_args()
+
+    # If help was invoked, parse_args will exit. Imports go after parse_args so that help is generated as fast as possible
     import logging
     from karppipeline.config import find_configs, load_config
     from karppipeline.install import install
@@ -55,16 +71,16 @@ def cli():
 
     configs = find_configs()
 
-    if sys.argv[1] == "clean":
+    if args.command == "clean":
         clean(configs)
         return 0
 
-    do_run = sys.argv[1] == "run"
-    do_install = sys.argv[1] == "install"
+    do_run = args.command == "run"
+    do_install = args.command == "install"
 
     kwargs = {}
-    if len(sys.argv) > 2:
-        kwargs["subcommand"] = sys.argv[2]
+    if len(args.modules) > 0:
+        kwargs["subcommand"] = args.modules
 
     silent = False
     if len(configs) > 1:

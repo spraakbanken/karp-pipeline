@@ -75,6 +75,13 @@ def parse_args() -> argparse.Namespace:
             action="store_true",
             default=False,
         )
+        p.add_argument(
+            "--log-level",
+            default="INFO",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+            type=str.upper,
+            help="Use DEBUG,INFO,WARNING or ERROR (default: INFO)",
+        )
 
     def add_modules(p: argparse.ArgumentParser):
         p.add_argument(
@@ -133,7 +140,7 @@ def cli():
         compact_output = args.compact_output == "compact"
     for config_handle in configs:
         karps_logging.setup_resource_logging(
-            config_handle.workdir, compact_output=compact_output, json_output=args.json_output
+            config_handle.workdir, args.log_level, compact_output=compact_output, json_output=args.json_output
         )
         logger = logging.getLogger(__name__)
         try:

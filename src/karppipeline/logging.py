@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from pathlib import Path
 import sys
 
 from karppipeline.common import create_log_dir
@@ -12,7 +13,7 @@ def format(date) -> str:
     return date.strftime("%Y-%m-%d %H:%M:%S,%f")
 
 
-def setup_resource_logging(path, compact_output=False, json_output=False):
+def setup_resource_logging(path: Path, log_level: str, compact_output: bool = False, json_output: bool = False):
     # remove previous handlers
     logger.handlers.clear()
 
@@ -48,6 +49,10 @@ def setup_resource_logging(path, compact_output=False, json_output=False):
 
         formatter = JsonFormatter()
         handler.setFormatter(formatter)
+
+    resolved_level = getattr(logging, log_level)
+    logger.setLevel(resolved_level)
+    handler.setLevel(resolved_level)
 
     logger.addHandler(handler)
 

@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="karp-pipeline",
         # TODO I haven't figured out a way to make Argparse both respect newlines AND not do breaks inside words
-        # without writing extra code
+        # without writing extra code, use bold * to make some separation between paragraphs.
         description=f"""{bold("*")} Automatically picks up a config.yaml in current directory,
         checks for parents and children and runs the command on all
         resources this level and below.

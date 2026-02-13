@@ -25,7 +25,11 @@ def clean(configs: list["ConfigHandle"]) -> None:
                 shutil.rmtree(path)
 
 
-def cli():
+def parse_args() -> argparse.Namespace:
+    """
+    Defines the pipeline CLI input, writes any requested help text and parses the input.
+    Exits if --help was invoked.
+    """
     parser = argparse.ArgumentParser(
         prog="karp-pipeline",
         # TODO I haven't figured out a way to make Argparse both respect newlines AND not do breaks inside words
@@ -95,7 +99,11 @@ def cli():
     add_modules(p_install)
     add_output_params(p_install)
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def cli():
+    args = parse_args()
 
     # If help was invoked, parse_args will exit. Imports go after parse_args so that help is generated as fast as possible
     import logging

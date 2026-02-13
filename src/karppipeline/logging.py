@@ -8,6 +8,10 @@ from karppipeline.common import create_log_dir
 logger = logging.getLogger("karppipeline")
 
 
+def format(date) -> str:
+    return date.strftime("%Y-%m-%d %H:%M:%S,%f")
+
+
 def setup_resource_logging(path, compact_output=False, json_output=False):
     # remove previous handlers
     logger.handlers.clear()
@@ -22,7 +26,7 @@ def setup_resource_logging(path, compact_output=False, json_output=False):
         # write header to know if a new run has started
         with open(log_file, "a") as f:
             f.write("-------------------------------\n")
-            f.write(f"pipeline run, {datetime.now().strftime('%Y-%m-%d_%H%M%S')}\n")
+            f.write(f"pipeline run, {format(datetime.now())}\n")
         handler = logging.FileHandler(log_file)
     else:
         handler = logging.StreamHandler(stream=sys.stdout)
@@ -33,7 +37,7 @@ def setup_resource_logging(path, compact_output=False, json_output=False):
         class JsonFormatter(logging.Formatter):
             def format(self, record):
                 payload = {
-                    "timestamp": datetime.fromtimestamp(record.created).isoformat(),
+                    "timestamp": format(datetime.fromtimestamp(record.created)),
                     "level": record.levelname,
                     "logger": record.name,
                     "message": record.getMessage(),

@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 __all__ = ["export", "dependencies", "load"]
 
 
-# generate schema, source_order and size, TODO sbxmetadata should be an optional dependency
-dependencies = ["sbxmetadata"]
+# generate schema, source_order and size
+dependencies = []
 
 
 def export(config, _):

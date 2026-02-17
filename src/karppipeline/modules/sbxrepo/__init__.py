@@ -2,6 +2,7 @@ from typing import Any, Callable, Sequence
 
 
 from karppipeline.models import Entry, PipelineConfig
+from karppipeline.run import Dependency
 
 """
 generate SBX metadata file
@@ -10,7 +11,7 @@ generate SBX metadata file
 __all__ = ["export", "install", "dependencies"]
 
 
-dependencies = ["sbxmetadata", "schema"]
+dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema")]
 
 
 def export(config: PipelineConfig, module_data: dict[str, Any]) -> Sequence[Callable[[Entry], Entry]]:
@@ -21,7 +22,7 @@ def export(config: PipelineConfig, module_data: dict[str, Any]) -> Sequence[Call
     """
     from karppipeline.modules.sbxrepo.metadata import _create_sb_metadata_file
 
-    metadata = module_data["sbxmetadata"]
+    metadata = module_data["sbxmetadata"] or {}
     schema_data = module_data["schema"]
 
     # create and validate file, save it in output directory

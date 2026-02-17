@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import importlib
 import logging
 from typing import Callable
@@ -11,11 +12,17 @@ from karppipeline.models import Entry, PipelineConfig
 logger = logging.getLogger(__name__)
 
 
-def run(config: PipelineConfig, subcommand: str = "all") -> None:
-    if subcommand == "all":
+@dataclass
+class Dependency:
+    name: str
+    optional: bool = False
+
+
+def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
+    if subcommand is None:
         invoked_cmds = config.export.default
     else:
-        invoked_cmds = [subcommand]
+        invoked_cmds = subcommand
 
     resolved_cmds = []
     mods = {}
@@ -30,7 +37,8 @@ def run(config: PipelineConfig, subcommand: str = "all") -> None:
                 mods[cmd] = mod
             except ModuleNotFoundError as e:
                 raise ImportException(f"{cmd} not found") from e
-            resolve(mod.dependencies)
+            # only add optional dependencies if they are listed in config.export.default
+            resolve([dep.name for dep in mod.dependencies if not dep.optional or dep.name in config.export.default])
             if cmd not in resolved_cmds:
                 resolved_cmds.append(cmd)
 
@@ -42,13 +50,14 @@ def run(config: PipelineConfig, subcommand: str = "all") -> None:
         mod = mods[cmd]
         dependencies = mod.dependencies
         for dependency in dependencies:
-            if dependency not in module_data:
+            dependency_name = dependency.name
+            if dependency_name not in module_data:
                 # fetch the result from cmd's dependency
-                if hasattr(mods[dependency], "load"):
-                    module_data[dependency] = mods[dependency].load(config)
+                if dependency_name in mods and hasattr(mods[dependency_name], "load"):
+                    module_data[dependency_name] = mods[dependency_name].load(config)
                 else:
                     # add dependency so we don't have to look for the load method again
-                    module_data[dependency] = None
+                    module_data[dependency_name] = None
         new_tasks = mod.export(config, module_data)
 
         # callables added to entry_tasks will be called for each entry

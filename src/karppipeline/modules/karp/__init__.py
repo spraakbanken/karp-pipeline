@@ -3,6 +3,7 @@ import subprocess
 from typing import Callable, cast
 from karppipeline.common import ImportException, create_output_dir, get_output_dir
 from karppipeline.models import Entry, EntrySchema, PipelineConfig
+from karppipeline.run import Dependency
 from karppipeline.util import yaml
 
 logger = logging.getLogger("karp")
@@ -12,7 +13,7 @@ logger = logging.getLogger("karp")
 
 __all__ = ["export", "install", "dependencies"]
 
-dependencies = ["jsonl", "sbxmetadata"]
+dependencies = [Dependency("jsonl"), Dependency("sbxmetadata", optional=True)]
 
 
 def export(config: PipelineConfig, module_data) -> list[Callable[[Entry], Entry]]:

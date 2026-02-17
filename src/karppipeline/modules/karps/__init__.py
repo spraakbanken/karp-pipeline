@@ -6,6 +6,7 @@ import karppipeline.modules.karps.install as backend_install
 from karppipeline.modules.karps.models import KarpsConfig
 from karppipeline.models import ConfiguredField, Entry, EntrySchema, InferredField, PipelineConfig
 import karppipeline.modules.karps.export as backend_export
+from karppipeline.run import Dependency
 
 """
 generate Karp-s backend configuration and SQL, could be broken up into two tasks
@@ -15,7 +16,7 @@ __all__ = ["export", "install", "dependencies"]
 logger = logging.getLogger(__name__)
 
 
-dependencies = ["sbxmetadata", "schema", "jsonl"]
+dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema"), Dependency("jsonl")]
 
 
 def export(
@@ -36,7 +37,9 @@ def export(
     # sql_gen is a coroutine for creating the SQL file for backend
     sql_gen = backend_export.create_karps_sql(config, module_config, entry_schema)
 
-    name = module_data["sbxmetadata"].get("name") or config.name and config.name.model_dump()
+    # fallback value because sbxmetadata is optional
+    sbxmetadata = module_data["sbxmetadata"] or {}
+    name = sbxmetadata.get("name") or config.name and config.name.model_dump()
     if not name:
         raise ImportException("karps: 'name' missing")
     backend_export.create_karps_backend_config(config, module_config, name, entry_schema, source_order, size, fields)

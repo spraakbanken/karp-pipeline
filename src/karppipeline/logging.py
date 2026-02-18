@@ -57,5 +57,16 @@ def setup_resource_logging(path: Path, log_level: str, compact_output: bool = Fa
     logger.addHandler(handler)
 
 
-def get_logger():
+def get_logger(name, prefix):
+    class PrefixFilter(logging.Filter):
+        def __init__(self, prefix: str):
+            super().__init__()
+            self.prefix = prefix
+
+        def filter(self, record: logging.LogRecord) -> bool:
+            record.msg = f"{self.prefix}{record.msg}"
+            return True
+
+    logger = logging.getLogger(name)
+    logger.addFilter(PrefixFilter(f"[{prefix}] "))
     return logger

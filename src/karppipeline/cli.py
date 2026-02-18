@@ -169,5 +169,7 @@ def cli():
                 logger.error("Exception for resource", exc_info=True)
             if compact_output:
                 print(f"{red_box()} {config_handle.workdir}\t fail")
+            else:
+                return 1
 
     return 0

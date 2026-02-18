@@ -1,3 +1,4 @@
+from pathlib import Path
 from pydantic import BaseModel
 
 from karppipeline.models import MultiLang
@@ -26,7 +27,11 @@ class EntryWord(BaseModel):
 
 
 class KarpsConfig(BaseModel):
-    output_config_dir: str
+    # the directory where pipeline should put new resources
+    output_config_dir: Path
+    cli_path: Path
+    # this both decides where to put files and where the cli is
+    config_host: str | None = None
     db_database: str
     db_host: str | None = None
     # which charset to use in MariaDB

@@ -164,9 +164,9 @@ def cli():
                 print(f"{green_box()} {config.resource_id}\t success")
         except Exception as e:
             if isinstance(e, InstallException) or isinstance(e, ImportException):
-                logging.getLogger("karppipeline").error(f"Exception for resource: {e.args[0]}")
+                logger.error(f"Exception for resource: {e.args[0]}")
             else:
-                logging.getLogger("karppipeline").error("Exception for resource", exc_info=True)
+                logger.error("Exception for resource", exc_info=True)
             if compact_output:
                 print(f"{red_box()} {config_handle.workdir}\t fail")
 

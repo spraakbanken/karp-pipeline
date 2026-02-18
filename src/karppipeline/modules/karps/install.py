@@ -1,13 +1,10 @@
-from contextlib import contextmanager
-
 from io import TextIOWrapper
 import logging
 from pathlib import Path
+import shlex
 import shutil
-from typing import Iterable, Iterator
-
-import mysql.connector
-from mysql.connector.abstracts import MySQLCursorAbstract
+import subprocess
+from typing import Iterable
 
 from karppipeline.common import Map, get_output_dir, InstallException
 from karppipeline.modules.karps.models import KarpsConfig
@@ -15,39 +12,33 @@ from karppipeline.models import PipelineConfig
 from karppipeline.util import yaml
 from karppipeline.util.git import GitRepo
 
-logger = logging.getLogger("karps")
+logger = logging.getLogger(__name__)
 
 
-def add_to_db(pipeline_config: PipelineConfig, karps_config):
-    @contextmanager
-    def get_db_cursor(karps_config: KarpsConfig) -> Iterator[MySQLCursorAbstract]:
-        connection = mysql.connector.connect(
-            user=karps_config.db_user,
-            password=karps_config.db_password,
-            database=karps_config.db_database,
-        )
-        cursor = None
-        try:
-            cursor = connection.cursor()
-            yield cursor
-        finally:
-            if cursor:
-                cursor.close()
-            connection.commit()
-            connection.close()
+def add_to_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig):
+    """
+    is karps.db_host is set, ssh + mysql will be used, else only mysql
+    """
+    host = karps_config.db_host
+    db_name = karps_config.db_database
 
-    sql_filename = get_output_dir(pipeline_config.workdir) / f"{pipeline_config.resource_id}.sql"
-    with open(sql_filename) as sql_file:
-        with get_db_cursor(karps_config) as cursor:
-            buffer = []
-            for line in sql_file:
-                line = line.rstrip()
-                if line:
-                    buffer.append(line)
-                    if line[-1] == ";":
-                        cursor.execute(" ".join(buffer))
-                        cursor.fetchall()
-                        buffer = []
+    sqlfile = get_output_dir(pipeline_config.workdir) / f"{pipeline_config.resource_id}.sql"
+    logger.info("Installing MySQL database: %s, source: %s", db_name, sqlfile)
+    if not host:
+        cmd = f"mysql {shlex.quote(db_name)}"
+    else:
+        cmd = f"ssh {shlex.quote(host)} {shlex.quote(f'mysql {db_name}')}"
+    p = subprocess.run(
+        f"cat {shlex.quote(str(sqlfile))} | {cmd}", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    out = p.stdout
+    err = p.stderr
+    if out:
+        logger.debug(out)
+    if err:
+        logger.error(err)
+    if p.returncode:
+        raise InstallException("Unable to install database file to Karp-s")
 
 
 def add_config(pipeline_config: PipelineConfig, karps_config: KarpsConfig, resource_id: str):

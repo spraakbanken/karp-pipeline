@@ -28,8 +28,7 @@ class EntryWord(BaseModel):
 class KarpsConfig(BaseModel):
     output_config_dir: str
     db_database: str
-    db_user: str
-    db_password: str
+    db_host: str | None = None
     # which charset to use in MariaDB
     db_charset: str = "utf8mb4"
     # which MariaDB collation to use

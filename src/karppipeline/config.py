@@ -32,6 +32,19 @@ def find_configs() -> list[ConfigHandle]:
 
 
 def _find_configs() -> Iterator[ConfigHandle]:
+    """
+    Find all available resource configs in $CWD or below in the hierarchy.
+    Resolves parent resources by looking for the parent-setting or looking
+    one level above for another config.yaml (recursively). If a config.yaml
+    has root: true, the recursion stops and the final parent is resolved.
+
+    TODO:
+    - use parent_config_paths for more than debugging, which will make sure
+      that the paths printed by karp-pipeline print-config-tree will be the
+      ones that are used. Collect the paths and merge based on those paths later.
+    - when we find parent: <path> we do not check for parents for those resources
+    """
+
     @functools.lru_cache
     def read_config(dir_path: Path) -> Map | None:
         config_path = dir_path / "config.yaml"

@@ -1,10 +1,11 @@
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import functools
 import logging
 import os
 from pathlib import Path
-from typing import Iterator
-from karppipeline.common import Map
+from typing import Any, Iterator, cast
+from karppipeline.common import ImportException, Map
 from karppipeline.models import PipelineConfig
 from karppipeline.util import yaml
 
@@ -17,6 +18,7 @@ __all__ = ["ConfigHandle", "load_config", "find_configs"]
 class ConfigHandle:
     workdir: Path
     config_dict: Map
+    parents: list[str] = field(default_factory=list)
 
 
 def load_config(config_handle) -> PipelineConfig:
@@ -30,6 +32,7 @@ def find_configs() -> list[ConfigHandle]:
 
 
 def _find_configs() -> Iterator[ConfigHandle]:
+    @functools.lru_cache
     def read_config(dir_path: Path) -> Map | None:
         config_path = dir_path / "config.yaml"
         if config_path.exists():
@@ -39,47 +42,81 @@ def _find_configs() -> Iterator[ConfigHandle]:
         return None
 
     start_path = Path(os.getcwd())
-    parent_configs = []
     config = read_config(start_path)
+    if not config:
+        raise ImportException(f"config: could not a config in {start_path}")
+
+    parent_configs = []
+    # useful for debugging
+    parent_config_paths: list[Path] = []
     path = start_path
-    # recusively find all parents until there is not config.yaml OR it contains root: true
     while config and not config.get("root", False):
+        parent_config_paths.append(path)
         parent_configs.append(config)
+        # recusively find all parents until there is no config.yaml OR it contains root: true OR it contains parent: <path>
+        if config and "parent" in config:
+            # if parent is set on config, just use it and stop iterating
+            path = Path(cast(str, config["parent"]))
+            # set config to parent_config
+            config = read_config(Path(cast(str, path)).parent)
+            if not config:
+                raise ImportException(f"config: could not find parent ({path})")
+            break
         path = path / ".."
         config = read_config(path)
     if config:
+        parent_config_paths.append(path)
         parent_configs.append(config)
     parent_configs = list(reversed(parent_configs))
+    # reverse parents to make it the correct order
+    parent_config_paths = list(reversed(parent_config_paths))
     left = parent_configs[0]
     for right in reversed(parent_configs[1:]):
         left = _merge_configs(left, right)
 
-    # now all parents configs have been merged, parent_config can still be None
-    parent_config = left
+    # now all parents of the current dir configs, current_dir_config can still be None
+    current_dir_config = left
 
-    def find_children(path: Path, parent: Map | None):
+    def find_children(path: Path, parent: Map | None, parent_config_paths) -> list[tuple[dict[str, Any], list[Path]]]:
         children = []
         for dir in path.iterdir():
             if dir.is_dir():
                 config = read_config(dir)
                 if config:
-                    new_config = _merge_configs(parent, config)
-                    new_children = find_children(dir, new_config)
+                    if "parent" in config:
+                        parent_path = Path(cast(str, config["parent"])).parent
+                        if not parent_path.is_absolute():
+                            parent_path = dir / parent_path
+                        parent_config_paths = [parent_path]
+                        # TODO parent_path does not resolve its own parents
+                        other_parent = read_config(parent_path)
+                        new_config = _merge_configs(other_parent, config)
+                    else:
+                        new_config = _merge_configs(parent, config)
+                    new_children = find_children(dir, new_config, parent_config_paths + [dir])
                     if new_children:
                         children.extend(new_children)
                     else:
                         # insert workdir so we can find the correct place later
                         new_config["workdir"] = dir
-                        children.append(new_config)
+                        children.append((new_config, parent_config_paths + [dir]))
         return children
 
-    children = find_children(start_path, parent_config)
+    children = find_children(start_path, current_dir_config, parent_config_paths)
 
     if children:
-        for child in children:
-            yield ConfigHandle(workdir=child["workdir"], config_dict=child)
-    elif parent_config:
-        yield ConfigHandle(workdir=start_path, config_dict=parent_config)
+        for child, parent_config_paths in children:
+            yield ConfigHandle(
+                workdir=child["workdir"],
+                config_dict=child,
+                parents=[str(path.absolute().resolve()) for path in parent_config_paths],
+            )
+    elif current_dir_config:
+        yield ConfigHandle(
+            workdir=start_path,
+            config_dict=current_dir_config,
+            parents=[str(path.absolute().resolve()) for path in parent_config_paths],
+        )
 
 
 def _merge_configs(orig_parent_config: Map | None, child_config: Map) -> Map:

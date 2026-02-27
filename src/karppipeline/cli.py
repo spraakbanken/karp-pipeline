@@ -1,7 +1,8 @@
 import argparse
+import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from karppipeline.common import ImportException, InstallException
 from karppipeline.util.terminal import bold, green_box, red_box
 
 
@@ -23,6 +24,16 @@ def clean(configs: list["ConfigHandle"]) -> None:
             if os.path.exists(path):
                 print(f"Remove {path}")
                 shutil.rmtree(path)
+
+
+def print_config_tree(configs: list["ConfigHandle"]) -> None:
+    """
+    remove log and output directories for the given resources
+    """
+    for resource in configs:
+        print(
+            f"{resource.config_dict['resource_id']}: {' -> '.join([os.path.relpath(Path(parent) / 'config.yaml', start=Path.cwd()) for parent in resource.parents])}"
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,6 +62,11 @@ def parse_args() -> argparse.Namespace:
     subparsers.metavar = "COMMAND"
 
     subparsers.add_parser("clean", help="remove genereated files")
+
+    subparsers.add_parser(
+        "print-config-tree",
+        help="helper to see that the configuration is setup and possible (using inheritance via structure and root-param or parent-praam)",
+    )
 
     def add_output_params(p: argparse.ArgumentParser):
         group = p.add_mutually_exclusive_group()
@@ -118,11 +134,21 @@ def cli():
     from karppipeline.install import install
     from karppipeline.run import run
     import karppipeline.logging as karps_logging
+    from karppipeline.common import ImportException, InstallException
 
-    configs = find_configs()
+    logger = logging.getLogger(__name__)
+    try:
+        configs = find_configs()
+    except ImportException as e:
+        logger.error(f"Exception for resource: {e.args[0]}")
+        return 1
 
     if args.command == "clean":
         clean(configs)
+        return 0
+
+    if args.command == "print-config-tree":
+        print_config_tree(configs)
         return 0
 
     do_run = args.command == "run"
@@ -142,7 +168,6 @@ def cli():
         karps_logging.setup_resource_logging(
             config_handle.workdir, args.log_level, compact_output=compact_output, json_output=args.json_output
         )
-        logger = logging.getLogger(__name__)
         try:
             config = load_config(config_handle)
             # run calls importers and exporters

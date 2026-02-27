@@ -81,6 +81,8 @@ def create_karps_backend_config(
         backend_config["description"] = pipeline_config.description.model_dump()
     if pipeline_config.limited_access:
         backend_config["limited_access"] = pipeline_config.limited_access
+    if pipeline_config.protected_metadata:
+        backend_config["protected_metadata"] = pipeline_config.protected_metadata
 
     with open(get_output_dir(pipeline_config.workdir) / f"{pipeline_config.resource_id}_karps.yaml", "w") as fp:
         yaml.dump(backend_config, fp)

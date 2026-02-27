@@ -179,7 +179,10 @@ class PipelineConfig(BaseModel):
     # entry_word is not in this list and is always the first element, wether used directly or as alias
     fields: list[ConfiguredField]
     workdir: Path
+    # the reosurce should only be available to users with access
     limited_access: bool = False
+    # the resource's metadata should only be available to users with access
+    protected_metadata: bool = False
 
     @property
     def modules(self) -> dict[str, object]:

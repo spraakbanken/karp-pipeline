@@ -7,7 +7,6 @@ from karppipeline.common import get_output_dir, InstallException
 from karppipeline.logging import get_logger
 from karppipeline.modules.karps.models import KarpsConfig
 from karppipeline.models import PipelineConfig
-from karppipeline.util import yaml
 
 logger = get_logger(__name__, "Karp-s installer")
 
@@ -34,9 +33,8 @@ def _rm_files_and_replace_parent(dir_to_replace: Path, files_to_remove: list[Pat
     if not host:
         for file_to_remove in files_to_remove:
             file_to_remove.unlink(missing_ok=True)
-        if dir_to_replace.exists():
-            dir_to_replace.rmdir()
-        dir_to_replace.mkdir()
+        if not dir_to_replace.exists():
+            dir_to_replace.mkdir()
     else:
         cmds = []
         for file_to_remove in files_to_remove:
@@ -58,7 +56,7 @@ def add_to_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig):
     host = karps_config.db_host
     db_name = karps_config.db_database
 
-    sqlfile = get_output_dir(pipeline_config.workdir) / f"{pipeline_config.resource_id}.sql"
+    sqlfile = get_output_dir(pipeline_config.workdir) / "karps" / f"{pipeline_config.resource_id}.sql"
     logger.info("Installing MySQL database: %s, source: %s", db_name, sqlfile)
     if not host:
         cmd = f"mysql {shlex.quote(db_name)}"
@@ -74,7 +72,7 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsConfig, resou
     Moves the generated configuration file into a directory for incoming resources for Karp-s (must be configured in backend)
     if `karps_config.host` is set, all steps will be done on host using SSH
     """
-    output_dir = get_output_dir(pipeline_config.workdir)
+    output_dir = get_output_dir(pipeline_config.workdir) / "karps"
     resource_dir = Path(karps_config.output_config_dir) / resource_id
 
     host = karps_config.config_host
@@ -87,22 +85,22 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsConfig, resou
     )
 
     # copy the needed files to the backends config dir
-    resource_config = output_dir / f"{resource_id}_karps.yaml"
+    resource_config = output_dir / "resource.yaml"
     fields_config = output_dir / "fields.yaml"
+    global_config = output_dir / "global.yaml"
 
-    if not host:
-        shutil.copy(resource_config, resource_file_path)
-        shutil.copy(fields_config, resource_fields_file_path)
-        # move this code to export?
-        with open(resource_global_file_path, "w") as fp:
-            yaml.dump(
-                {"tags_description": {key: val.model_dump() for key, val in karps_config.tags_description.items()}}, fp
+    for source, target in [
+        (resource_config, resource_file_path),
+        (fields_config, resource_fields_file_path),
+        (global_config, resource_global_file_path),
+    ]:
+        if not host:
+            shutil.copy(source, target)
+        else:
+            _run_subprocess(
+                ["scp", str(source), f"{host}:{str(target)}"],
+                err_msg=f"Unable to copy file to host {host}",
             )
-    else:
-        _run_subprocess(
-            ["scp", str(resource_config), f"{host}:{str(resource_dir / f'{resource_id}.yaml')}"],
-            err_msg=f"Unable to copy file to host {host}",
-        )
 
     # run the backend cli to process the added files
     cmd = f"{karps_config.cli_path} add {resource_id}"

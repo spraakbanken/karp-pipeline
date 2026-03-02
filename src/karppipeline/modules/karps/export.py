@@ -19,9 +19,16 @@ def create_karps_backend_config(
     size: int,
     fields: list[dict[str, str]],
 ):
+    karps_workdir = create_output_dir(pipeline_config.workdir) / "karps"
+    karps_workdir.mkdir(exist_ok=True)
     # these fields might already be present in backend config, install must merge this file and backend fields.yaml
-    with open(create_output_dir(pipeline_config.workdir) / "fields.yaml", "w") as fp:
+    with open(karps_workdir / "fields.yaml", "w") as fp:
         yaml.dump(fields, fp)
+
+    with open(karps_workdir / "global.yaml", "w") as fp:
+        yaml.dump(
+            {"tags_description": {key: val.model_dump() for key, val in karps_config.tags_description.items()}}, fp
+        )
 
     def order_fields(fields: Iterator[str]) -> Iterable[str]:
         # initialize main sort order
@@ -84,7 +91,7 @@ def create_karps_backend_config(
     if pipeline_config.protected_metadata:
         backend_config["protected_metadata"] = pipeline_config.protected_metadata
 
-    with open(get_output_dir(pipeline_config.workdir) / f"{pipeline_config.resource_id}_karps.yaml", "w") as fp:
+    with open(karps_workdir / "resource.yaml", "w") as fp:
         yaml.dump(backend_config, fp)
 
 
@@ -238,7 +245,7 @@ def create_karps_sql(
 
     sql_gen = entries_sql()
     next(sql_gen)
-    with open(get_output_dir(pipeline_config.workdir) / f"{pipeline_config.resource_id}.sql", "w") as fp:
+    with open(get_output_dir(pipeline_config.workdir) / "karps" / f"{pipeline_config.resource_id}.sql", "w") as fp:
         schema_sql, indices = schema(pipeline_config.resource_id, resource_config)
         fp.write(schema_sql)
         fp.write(indices)

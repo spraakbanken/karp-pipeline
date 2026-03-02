@@ -14,13 +14,13 @@ def install(config: PipelineConfig, subcommand: str = "all") -> None:
         install_all = True
     cmd_found = False
 
-    if (install_all and "karps" in config.install) or subcommand == "karps":
+    if (install_all and "karps" in config.install) or "karps" in subcommand:
         karps.install(config)
         cmd_found = True
-    if (install_all and "sbxrepo" in config.install) or subcommand == "sbxrepo":
+    if (install_all and "sbxrepo" in config.install) or "sbxrepo" in subcommand:
         sbxrepo.install(config)
         cmd_found = True
-    if (install_all and "karp" in config.install) or subcommand == "karp":
+    if (install_all and "karp" in config.install) or "karp" in subcommand:
         karp.install(config)
         cmd_found = True
 

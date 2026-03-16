@@ -83,12 +83,12 @@ def _find_configs() -> Iterator[ConfigHandle]:
     parent_configs = list(reversed(parent_configs))
     # reverse parents to make it the correct order
     parent_config_paths = list(reversed(parent_config_paths))
-    left = parent_configs[0]
-    for right in reversed(parent_configs[1:]):
-        left = _merge_configs(left, right)
+    target_config = parent_configs[0]
+    for parent_config in reversed(parent_configs[1:]):
+        target_config = _merge_configs(parent_config, target_config)
 
     # now all parents of the current dir configs, current_dir_config can still be None
-    current_dir_config = left
+    current_dir_config = target_config
 
     def find_children(path: Path, parent: Map | None, parent_config_paths) -> list[tuple[dict[str, Any], list[Path]]]:
         children = []

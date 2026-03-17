@@ -77,7 +77,7 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
         for key in entry_schema.keys():
             if entry_schema[key].type == "text" and key in new_entry:
                 if not entry_schema[key].collection:
-                    new_entry[key] = _clean_text(new_entry[key])
+                    new_entry[key] = _clean_text(new_entry[key]) if new_entry[key] else None
                 else:
                     # this also causes all None to be []
                     new_entry[key] = [_clean_text(text) for text in new_entry[key] or []]

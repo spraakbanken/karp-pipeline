@@ -1,3 +1,4 @@
+from typing import Any
 import orjson
 
 from pydantic import BaseModel
@@ -20,3 +21,7 @@ def dumps(obj: object) -> str:
 
 def loads(str: str) -> Map:
     return orjson.loads(str)
+
+
+def load_array(data: bytes) -> list[Any]:
+    return orjson.loads(data)

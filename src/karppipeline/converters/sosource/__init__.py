@@ -1,6 +1,7 @@
 """
 Used to insert source links in resource so2009-ord
 """
+
 import importlib.resources
 from karppipeline.models import InferredField
 from karppipeline.util import json

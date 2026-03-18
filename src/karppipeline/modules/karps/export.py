@@ -109,6 +109,7 @@ def create_karps_sql(
             removed them dynamically
             """
             return f"""
+
             SELECT CONCAT('DROP TABLE IF EXISTS `', GROUP_CONCAT(TABLE_NAME SEPARATOR '`, `'), '`;')
             INTO @drop_stmt FROM information_schema.TABLES 
             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE '{table_name}__%';
@@ -249,6 +250,7 @@ def create_karps_sql(
         schema_sql, indices = schema(pipeline_config.resource_id, resource_config)
         fp.write(schema_sql)
         fp.write(indices)
+        fp.write("SET FOREIGN_KEY_CHECKS = 0; SET UNIQUE_CHECKS = 0; SET AUTOCOMMIT = 0;")
         while True:
             entry = yield
             if not entry:
@@ -257,3 +259,4 @@ def create_karps_sql(
                 break
             for line in sql_gen.send(entry):
                 fp.write(line)
+            fp.write("COMMIT; SET FOREIGN_KEY_CHECKS = 1; SET UNIQUE_CHECKS = 1;")

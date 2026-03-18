@@ -12,11 +12,11 @@ def custom_serializer(obj: object) -> object:
     raise TypeError(f"Type {type(obj)} not serializable")
 
 
-def dumps(obj: object) -> str:
-    return orjson.dumps(
-        obj,
-        default=custom_serializer,
-    ).decode()
+def dumps(obj: object, pretty=False) -> str:
+    kwargs = {}
+    if pretty:
+        kwargs["option"] = orjson.OPT_INDENT_2
+    return orjson.dumps(obj, default=custom_serializer, **kwargs).decode()
 
 
 def loads(str: str) -> Map:

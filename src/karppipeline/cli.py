@@ -28,12 +28,27 @@ def clean(configs: list["ConfigHandle"]) -> None:
 
 def print_config_tree(configs: list["ConfigHandle"]) -> None:
     """
-    remove log and output directories for the given resources
+    print the config hierarchy with paths
     """
     for resource in configs:
         print(
             f"{resource.config_dict['resource_id']}: {' -> '.join([os.path.relpath(Path(parent) / 'config.yaml', start=Path.cwd()) for parent in resource.parents])}"
         )
+
+
+def print_config(configs: list["ConfigHandle"], resource_id: str) -> None:
+    """
+    for each resource print the resolved configuration
+    """
+    from karppipeline.util import json
+
+    for resource in configs:
+        if resource_id == resource.config_dict["resource_id"]:
+            del resource.config_dict["workdir"]
+            print(json.dumps(resource.config_dict, pretty=True))
+            break
+    else:
+        print(f'{{"error": "could not find {resource_id}"}}')
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,8 +80,14 @@ def parse_args() -> argparse.Namespace:
 
     subparsers.add_parser(
         "print-config-tree",
-        help="helper to see that the configuration is setup and possible (using inheritance via structure and root-param or parent-praam)",
+        help="helper to see the configuration hierarchy (using inheritance via structure and root-param or parent-param)",
     )
+
+    p_print_config = subparsers.add_parser(
+        "print-config",
+        help="helper to see the configuration",
+    )
+    p_print_config.add_argument("resource_id")
 
     def add_output_params(p: argparse.ArgumentParser):
         group = p.add_mutually_exclusive_group()
@@ -149,6 +170,10 @@ def cli():
 
     if args.command == "print-config-tree":
         print_config_tree(configs)
+        return 0
+
+    if args.command == "print-config":
+        print_config(configs, args.resource_id)
         return 0
 
     do_run = args.command == "run"

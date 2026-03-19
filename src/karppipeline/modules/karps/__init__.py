@@ -47,12 +47,13 @@ def export(
     next(sql_gen)
 
     def task(entry: Entry | None) -> Entry | None:
+        nonlocal sql_gen
         logger.debug("karps entry task")
         try:
             sql_gen.send(entry)
         except StopIteration:
             # if this happens, the entries are exhausted
-            ...
+            sql_gen = None
         return entry
 
     return [task]

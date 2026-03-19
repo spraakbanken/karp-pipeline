@@ -7,7 +7,7 @@ from karppipeline.models import EntrySchema, PipelineConfig, Entry, InferredFiel
 logger = logging.getLogger(__name__)
 
 
-def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Callable[[Entry], Entry]:
+def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Callable[[Entry | None], Entry | None]:
     """
     Check if config contains any renames or conversions
     Update the entry schema and each entry with this information
@@ -55,7 +55,9 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
             return converters[converter]["convert"](config.resource_id, val)
         return val
 
-    def convert(entry: Entry) -> Entry:
+    def convert(entry: Entry | None) -> Entry | None:
+        if not entry:
+            return None
         logger.debug("schema entry task")
         new_entry = {}
 

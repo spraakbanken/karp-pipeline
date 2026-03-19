@@ -249,14 +249,12 @@ def create_karps_sql(
     with open(get_output_dir(pipeline_config.workdir) / "karps" / f"{pipeline_config.resource_id}.sql", "w") as fp:
         schema_sql, indices = schema(pipeline_config.resource_id, resource_config)
         fp.write(schema_sql)
-        fp.write(indices)
         fp.write("SET FOREIGN_KEY_CHECKS = 0; SET UNIQUE_CHECKS = 0; SET AUTOCOMMIT = 0;")
         while True:
             entry = yield
             if not entry:
-                # TODO it this needed or can sql_gen be killed/gc:ed when the outer generator is done
-                sql_gen.send(None)
+                fp.write(indices)
+                fp.write("COMMIT; SET FOREIGN_KEY_CHECKS = 1; SET UNIQUE_CHECKS = 1;")
                 break
             for line in sql_gen.send(entry):
                 fp.write(line)
-            fp.write("COMMIT; SET FOREIGN_KEY_CHECKS = 1; SET UNIQUE_CHECKS = 1;")

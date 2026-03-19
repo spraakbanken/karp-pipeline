@@ -44,7 +44,7 @@ def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
 
     resolve(invoked_cmds)
 
-    entry_tasks: list[Callable[[Entry], Entry]] = []
+    entry_tasks: list[Callable[[Entry | None], Entry]] = []
     module_data = {}
     for cmd in resolved_cmds:
         mod = mods[cmd]
@@ -69,3 +69,7 @@ def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
         updated_entry = entry
         for task in entry_tasks:
             updated_entry = task(updated_entry)
+
+    # sending None to all entry tasks to signal that no more entries are coming
+    for task in entry_tasks:
+        task(None)

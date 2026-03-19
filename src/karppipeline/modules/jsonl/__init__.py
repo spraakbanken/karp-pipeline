@@ -27,7 +27,9 @@ def export(config: PipelineConfig, _):
     gen = json_dump()
     next(gen)
 
-    def task(entry: Entry, /) -> Entry:
+    def task(entry: Entry | None, /) -> Entry | None:
+        if not entry:
+            return None
         logger.debug("jsonl entry task")
         gen.send(entry)
         return entry

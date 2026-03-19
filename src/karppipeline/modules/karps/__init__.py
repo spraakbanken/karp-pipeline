@@ -22,7 +22,7 @@ dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema"), 
 def export(
     config: PipelineConfig,
     module_data,
-) -> list[Callable[[Entry], Entry]]:
+) -> list[Callable[[Entry | None], Entry | None]]:
     """
     Create configuration and SQL data file for Karp-s backend
     """
@@ -46,9 +46,13 @@ def export(
 
     next(sql_gen)
 
-    def task(entry: Entry) -> Entry:
+    def task(entry: Entry | None) -> Entry | None:
         logger.debug("karps entry task")
-        sql_gen.send(entry)
+        try:
+            sql_gen.send(entry)
+        except StopIteration:
+            # if this happens, the entries are exhausted
+            ...
         return entry
 
     return [task]

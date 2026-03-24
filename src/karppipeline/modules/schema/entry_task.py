@@ -70,7 +70,12 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
         for field in converted_fields:
             if not field.exclude:
                 if field.name == "*":
-                    new_entry[field.target] = _convert_value(field.converter, entry)
+                    val = _convert_value(field.converter, entry)
+                    if val is not None:
+                        new_entry[field.target] = val
+                    else:
+                        if field.target in new_entry:
+                            del new_entry[field.target]
                 else:
                     val = entry[field.name]
                     new_entry[field.target] = _convert_value(field.converter, val)

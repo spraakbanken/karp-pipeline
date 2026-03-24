@@ -1,10 +1,10 @@
 import csv
 import logging
+from pathlib import Path
 from typing import Iterator, cast
 
 from karppipeline.models import Entry, PipelineConfig
 from karppipeline.util import json
-from karppipeline.util.terminal import bold
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +37,12 @@ def _update_json_source_order(source_order: list[str], new_keys: list[str]) -> l
     return source_order
 
 
-def _find_source_file(pipeline_config: PipelineConfig):
+def _find_source_files(pipeline_config: PipelineConfig) -> tuple[list[Path], str]:
     files = list(pipeline_config.workdir.glob("source/*"))
-    if len(files) != 1:
-        # we only support one input file
-        logger.warning(f"pipeline supports {bold('one')} input file in source/ and will select the first file.")
-    logger.info(f"Reading source file: {files[0]}")
-    return files[0]
+    # TODO check that all files have the same file ending
+    logger.info(f"Reading source files: {', '.join([str(file) for file in files])}")
+    suffix = files[0].suffix
+    return files, suffix
 
 
 def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], Iterator[Entry]]:
@@ -52,50 +51,61 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
     (unless hard coded in configuration). We prepare source order here, but it is not usable
     until after the generators have been consumed, same as size.
     """
-    input_file = _find_source_file(pipeline_config)
+    input_files, suffix = _find_source_files(pipeline_config)
 
     # size, array because generator needs mutable object
     size = [0]
-    if input_file.suffix in [".csv", ".tsv"]:
-        fp = open((input_file), encoding="utf-8-sig")
-        if input_file.suffix == ".csv":
-            reader = csv.reader(fp)
-        else:
-            reader = csv.reader(fp, dialect="excel-tab")
-        source_order = next(reader, None) or []
-        import_settings = cast(dict[str, dict[str, list[dict[str, str]]]], pipeline_config.import_settings)
-        # type information for parsing values
-        cast_fields: list[dict[str, str]] = import_settings["csv"]["cast_fields"]
+    source_order: list[str] = []
+    if suffix in [".csv", ".tsv"]:
 
         def get_entries() -> Iterator[Entry]:
-            for row in reader:
-                entry: dict[str, str | int | float] = dict(zip(source_order, row))
-                # parse values
-                for field in cast_fields:
-                    if field["type"] == "int":
-                        entry[field["name"]] = int(entry[field["name"]])
-                    elif field["type"] == "float":
-                        entry[field["name"]] = float(entry[field["name"]])
-                    else:
-                        raise RuntimeError(f"Uknown type: {field['type']}, given in CSV import")
-                size[0] += 1
-                yield entry
-            fp.close()
+            for input_file in input_files:
+                fp = open((input_file), encoding="utf-8-sig")
+                if suffix == ".csv":
+                    reader = csv.reader(fp)
+                else:
+                    reader = csv.reader(fp, dialect="excel-tab")
+
+                file_source_order = next(reader, None) or []
+                if not source_order:
+                    for elem in file_source_order:
+                        source_order.append(elem)
+                else:
+                    if source_order != file_source_order:
+                        raise RuntimeError("Differing headers in CSV/TSV files")
+                import_settings = cast(dict[str, dict[str, list[dict[str, str]]]], pipeline_config.import_settings)
+                # type information for parsing values
+                cast_fields: list[dict[str, str]] = import_settings["csv"]["cast_fields"]
+
+                for row in reader:
+                    entry: dict[str, str | int | float] = dict(zip(source_order, row))
+                    # parse values
+                    for field in cast_fields:
+                        if field["type"] == "int":
+                            entry[field["name"]] = int(entry[field["name"]])
+                        elif field["type"] == "float":
+                            entry[field["name"]] = float(entry[field["name"]])
+                        else:
+                            raise RuntimeError(f"Uknown type: {field['type']}, given in CSV import")
+                    size[0] += 1
+                    yield entry
+                fp.close()
 
     else:
-        fp = open(input_file)
-        source_order = []
 
         def get_entries() -> Iterator[Entry]:
-            for line in fp:
-                entry = json.loads(line)
+            for input_file in input_files:
+                fp = open(input_file)
 
-                # get the sort order from the input JSON
-                # this could be configurable to speed up
-                keys = list(entry.keys())
-                _update_json_source_order(source_order, keys)
-                size[0] += 1
-                yield entry
-            fp.close()
+                for line in fp:
+                    entry = json.loads(line)
+
+                    # get the sort order from the input JSON
+                    # this could be configurable to speed up
+                    keys = list(entry.keys())
+                    _update_json_source_order(source_order, keys)
+                    size[0] += 1
+                    yield entry
+                fp.close()
 
     return source_order, size, get_entries()

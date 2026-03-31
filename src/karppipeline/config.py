@@ -19,6 +19,7 @@ class ConfigHandle:
     workdir: Path
     config_dict: Map
     parents: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 def load_config(config_handle) -> PipelineConfig:
@@ -42,7 +43,6 @@ def _find_configs() -> Iterator[ConfigHandle]:
     - use parent_config_paths for more than debugging, which will make sure
       that the paths printed by karp-pipeline print-config-tree will be the
       ones that are used. Collect the paths and merge based on those paths later.
-    - when we find parent: <path> we do not check for parents for those resources
     """
 
     @functools.lru_cache
@@ -54,6 +54,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
                 return yaml.load(fp)
         return None
 
+    warnings = []
     start_path = Path(os.getcwd())
     config = read_config(start_path)
     if not config:
@@ -74,6 +75,8 @@ def _find_configs() -> Iterator[ConfigHandle]:
             config = read_config(Path(cast(str, path)).parent)
             if not config:
                 raise ImportException(f"config: could not find parent ({path})")
+            if "parent" in config:
+                warnings.append("A parent config contains `parent`-key which is not supported and will be ignored.")
             break
         path = path / ".."
         config = read_config(path)
@@ -90,8 +93,11 @@ def _find_configs() -> Iterator[ConfigHandle]:
     # now all parents of the current dir configs, current_dir_config can still be None
     current_dir_config = target_config
 
-    def find_children(path: Path, parent: Map | None, parent_config_paths) -> list[tuple[dict[str, Any], list[Path]]]:
+    def find_children(
+        path: Path, parent: Map | None, parent_config_paths
+    ) -> list[tuple[dict[str, Any], list[Path], list[str]]]:
         children = []
+        warnings = []
         for dir in path.iterdir():
             if dir.is_dir():
                 config = read_config(dir)
@@ -101,34 +107,43 @@ def _find_configs() -> Iterator[ConfigHandle]:
                         if not parent_path.is_absolute():
                             parent_path = dir / parent_path
                         parent_config_paths = [parent_path]
-                        # TODO parent_path does not resolve its own parents
                         other_parent = read_config(parent_path)
+                        if not other_parent:
+                            raise ImportException(f"config: could not find parent ({path})")
+                        if "parent" in other_parent:
+                            warnings.append(
+                                "A parent config contains `parent`-key which is not supported and will be ignored."
+                            )
                         new_config = _merge_configs(other_parent, config)
                     else:
                         new_config = _merge_configs(parent, config)
                     new_children = find_children(dir, new_config, parent_config_paths + [dir])
                     if new_children:
-                        children.extend(new_children)
+                        for child in new_children:
+                            child[2].extend(warnings)
+                            children.append(child)
                     else:
                         # insert workdir so we can find the correct place later
                         new_config["workdir"] = dir
-                        children.append((new_config, parent_config_paths + [dir]))
+                        children.append((new_config, parent_config_paths + [dir], warnings))
         return children
 
     children = find_children(start_path, current_dir_config, parent_config_paths)
 
     if children:
-        for child, parent_config_paths in children:
+        for child, parent_config_paths, warnings in children:
             yield ConfigHandle(
                 workdir=child["workdir"],
                 config_dict=child,
                 parents=[str(path.absolute().resolve()) for path in parent_config_paths],
+                warnings=warnings,
             )
     elif current_dir_config:
         yield ConfigHandle(
             workdir=start_path,
             config_dict=current_dir_config,
             parents=[str(path.absolute().resolve()) for path in parent_config_paths],
+            warnings=warnings,
         )
 
 

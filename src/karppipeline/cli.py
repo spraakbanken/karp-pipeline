@@ -193,6 +193,10 @@ def cli():
         karps_logging.setup_resource_logging(
             config_handle.workdir, args.log_level, compact_output=compact_output, json_output=args.json_output
         )
+        resource_logger = logging.getLogger("karppipeline")
+        for warning in config_handle.warnings:
+            resource_logger.warning(warning)
+
         try:
             config = load_config(config_handle)
             # run calls importers and exporters

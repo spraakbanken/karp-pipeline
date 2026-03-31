@@ -57,7 +57,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
     start_path = Path(os.getcwd())
     config = read_config(start_path)
     if not config:
-        raise ImportException(f"config: could not a config in {start_path}")
+        raise ImportException(f"config: could not find a config in {start_path}")
 
     parent_configs = []
     # useful for debugging

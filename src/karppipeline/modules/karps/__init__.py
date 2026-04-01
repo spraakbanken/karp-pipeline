@@ -59,15 +59,18 @@ def export(
     return [task]
 
 
-def install(pipeline_config: PipelineConfig):
+def install(pipeline_config: PipelineConfig, uninstall=False):
     """
     1. Move Karp-s backend configuration file to the configured backend configuration directory.
     2. Run the SQL file in the configured database.
     """
     karps_config = _get_module_config(pipeline_config)
-
-    backend_install.add_to_db(pipeline_config, karps_config)
-    backend_install.add_config(pipeline_config, karps_config, pipeline_config.resource_id)
+    if not uninstall:
+        backend_install.add_to_db(pipeline_config, karps_config)
+        backend_install.add_config(pipeline_config, karps_config, pipeline_config.resource_id)
+    else:
+        backend_install.remove_from_db(pipeline_config, karps_config)
+        backend_install.remove_config(karps_config, pipeline_config.resource_id)
 
 
 def _get_module_config(config):

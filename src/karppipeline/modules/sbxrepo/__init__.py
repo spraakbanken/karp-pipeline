@@ -1,6 +1,7 @@
 from typing import Any, Callable, Sequence
 
 
+from karppipeline.common import InstallException
 from karppipeline.models import Entry, PipelineConfig
 from karppipeline.run import Dependency
 
@@ -30,7 +31,9 @@ def export(config: PipelineConfig, module_data: dict[str, Any]) -> Sequence[Call
     return ()
 
 
-def install(pipeline_config: PipelineConfig):
+def install(pipeline_config: PipelineConfig, uninstall=False):
+    if uninstall:
+        raise InstallException("Uninstall not supported for sbxrepo module")
     from karppipeline.modules.sbxrepo.common import _get_config
     from karppipeline.modules.sbxrepo.installer import _upload_data, _install_metadata_file
     from karppipeline.modules.sbxrepo.models import SBXRepoConfig

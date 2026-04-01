@@ -143,6 +143,14 @@ def parse_args() -> argparse.Namespace:
     add_modules(p_install)
     add_output_params(p_install)
 
+    p_uninstall = subparsers.add_parser(
+        "uninstall",
+        description="Tries to uninstall resource from the requested systems.",
+        help="removes the material to the requested system",
+    )
+    add_modules(p_uninstall)
+    add_output_params(p_uninstall)
+
     return parser.parse_args()
 
 
@@ -152,7 +160,7 @@ def cli():
     # If help was invoked, parse_args will exit. Imports go after parse_args so that help is generated as fast as possible
     import logging
     from karppipeline.config import find_configs, load_config
-    from karppipeline.install import install
+    from karppipeline.install import install, uninstall
     from karppipeline.run import run
     import karppipeline.logging as karps_logging
     from karppipeline.common import ImportException, InstallException
@@ -178,6 +186,7 @@ def cli():
 
     do_run = args.command == "run"
     do_install = args.command == "install"
+    do_uninstall = args.command == "uninstall"
 
     kwargs = {}
     if len(args.modules) > 0:
@@ -205,12 +214,16 @@ def cli():
                     task_output = "Running "
                 elif do_install:
                     task_output = "Installing "
+                elif do_uninstall:
+                    task_output = "Uninstalling "
                 else:
-                    task_output = "Unknown action"
+                    task_output = "Unknown action "
 
                 logger.info(task_output + config.resource_id)
             if do_install:
                 install(config, **kwargs)
+            if do_uninstall:
+                uninstall(config, **kwargs)
             elif do_run:
                 run(config, **kwargs)
             if compact_output:

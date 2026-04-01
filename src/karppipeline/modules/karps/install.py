@@ -49,21 +49,33 @@ def _rm_files_and_replace_parent(dir_to_replace: Path, files_to_remove: list[Pat
         )
 
 
+def remove_from_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig):
+    _run_db(pipeline_config, karps_config, "delete.sql")
+
+
 def add_to_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig):
+    _run_db(pipeline_config, karps_config, "create.sql")
+
+
+def _run_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig, sql_file):
     """
     if karps.db_host is set, ssh + mysql will be used, else only mysql
     """
     host = karps_config.db_host
     db_name = karps_config.db_database
 
-    sqlfile = get_output_dir(pipeline_config.workdir) / "karps" / f"{pipeline_config.resource_id}.sql"
-    logger.info("Installing MySQL database: %s, source: %s", db_name, sqlfile)
+    sqlfile = get_output_dir(pipeline_config.workdir) / "karps" / sql_file
+    if host:
+        host_logging = f", on host {host}"
+    else:
+        host_logging = ""
+    logger.info("Running MySQL database: %s, source: %s%s", db_name, sqlfile, host_logging)
     if not host:
         cmd = f"mysql {shlex.quote(db_name)}"
     else:
         cmd = f"ssh {shlex.quote(host)} {shlex.quote(f'mysql {db_name}')}"
     _run_subprocess(
-        f"cat {shlex.quote(str(sqlfile))} | {cmd}", shell=True, err_msg="Unable to install database file to Karp-s"
+        f"cat {shlex.quote(str(sqlfile))} | {cmd}", shell=True, err_msg="Unable to run database file for Karp-s install/uninstall"
     )
 
 
@@ -119,3 +131,18 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsConfig, resou
         logger.warning("karp-s-backend may not have loaded the new resource")
     else:
         logger.info("karp-s-backend reloaded")
+
+
+def remove_config(karps_config: KarpsConfig, resource_id: str):
+    # try to reload the Karp-s backend (ok to fail, so don't print output from command and only write a warning)
+    cmd = f"{karps_config.cli_path} remove {resource_id}"
+    host = karps_config.config_host
+    if host:
+        cmd = f'ssh {shlex.quote(host)} "{cmd}"'
+
+    logger.info(f"Calling karp-s-cli to remove configuration for {resource_id}.")
+    return_code = _run_subprocess(cmd, check=False, shell=True, print_output=False)
+    if return_code:
+        logger.error("karp-s-backend may not have removed the resource.")
+    else:
+        logger.info("karp-s-backend removed resource")

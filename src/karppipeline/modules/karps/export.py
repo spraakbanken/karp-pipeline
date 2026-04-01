@@ -98,12 +98,12 @@ def create_karps_backend_config(
 def create_karps_sql(
     pipeline_config: PipelineConfig, karps_config: KarpsConfig, resource_config: EntrySchema
 ) -> Generator[None, Entry | None, None]:
-    def schema(table_name: str, structure: EntrySchema) -> tuple[str, str]:
+    def schema(table_name: str, structure: EntrySchema) -> tuple[str, str, str]:
         """
         Find schema automatically by going through all elements
         """
 
-        def delete_statement(table_name) -> str:
+        def create_delete_statement(table_name) -> str:
             """
             Each resource with collections produces multiple tables, prefixed with {resource_id}__ and these statements
             removed them dynamically
@@ -173,10 +173,10 @@ def create_karps_sql(
 
         tables, fields, indices = inner(structure.values())
 
+        delete_stmt = create_delete_statement(table_name)
         return (
-            f"""
-        SET SESSION max_statement_time = 0;
-        {delete_statement(table_name)}
+            (
+                f"""
         CREATE TABLE `{table_name}` (
             __id INT PRIMARY KEY,
             {",\n".join(fields)}
@@ -184,8 +184,11 @@ def create_karps_sql(
         CHARACTER SET {karps_config.db_charset}
         COLLATE {karps_config.db_collation};
         """
-            + "".join(tables)
-        ), "\n".join(indices) + "\n"
+                + "".join(tables)
+            ),
+            "\n".join(indices) + "\n",
+            delete_stmt,
+        )
 
     def entries_sql() -> Generator[list[str], Entry | None, None]:
         idx = 0
@@ -247,8 +250,11 @@ def create_karps_sql(
 
     sql_gen = entries_sql()
     next(sql_gen)
-    with open(get_output_dir(pipeline_config.workdir) / "karps" / f"{pipeline_config.resource_id}.sql", "w") as fp:
-        schema_sql, indices = schema(pipeline_config.resource_id, resource_config)
+    schema_sql, indices, delete_statement = schema(pipeline_config.resource_id, resource_config)
+    # one file for creating the resource, also deletes previous versions of resource
+    with open(get_output_dir(pipeline_config.workdir) / "karps/create.sql", "w") as fp:
+        fp.write("SET SESSION max_statement_time = 0;")
+        fp.write(delete_statement)
         fp.write(schema_sql)
         fp.write("SET FOREIGN_KEY_CHECKS = 0; SET UNIQUE_CHECKS = 0; SET AUTOCOMMIT = 0;")
         while True:
@@ -259,3 +265,7 @@ def create_karps_sql(
                 break
             for line in sql_gen.send(entry):
                 fp.write(line)
+    # one file to delete resource, used in uninstall
+    with open(get_output_dir(pipeline_config.workdir) / "karps/delete.sql", "w") as fp:
+        fp.write("SET SESSION max_statement_time = 0;")
+        fp.write(delete_statement)

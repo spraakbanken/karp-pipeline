@@ -1,7 +1,7 @@
 import logging
 import subprocess
 from typing import Callable, cast
-from karppipeline.common import ImportException, create_output_dir, get_output_dir
+from karppipeline.common import ImportException, InstallException, create_output_dir, get_output_dir
 from karppipeline.models import Entry, EntrySchema, PipelineConfig
 from karppipeline.run import Dependency
 from karppipeline.util import yaml
@@ -39,7 +39,10 @@ def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchem
         yaml.dump(karp_config, fp)
 
 
-def install(config: PipelineConfig):
+def install(config: PipelineConfig, uninstall=False):
+    if uninstall:
+        raise InstallException("Uninstall not supported for sbxrepo module")
+
     config_file = get_output_dir(config.workdir) / "karp" / f"{config.resource_id}.yaml"
 
     # adding a resurce in Karp is done in three steps

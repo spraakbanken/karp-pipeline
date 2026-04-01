@@ -175,6 +175,7 @@ def create_karps_sql(
 
         return (
             f"""
+        SET SESSION max_statement_time = 0;
         {delete_statement(table_name)}
         CREATE TABLE `{table_name}` (
             __id INT PRIMARY KEY,

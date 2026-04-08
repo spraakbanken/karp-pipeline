@@ -7,7 +7,7 @@ from karppipeline.modules.karps.models import KarpsConfig
 from karppipeline.models import Entry, EntrySchema, PipelineConfig, InferredField
 from karppipeline.util import yaml
 
-VARCHAR_CUTOFF = 200  # if a field contains values larger than this, use TEXT type and skip indexing
+VARCHAR_CUTOFF = 400  # if a field contains values larger than this, use TEXT type and skip indexing
 
 
 def create_karps_backend_config(

@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Iterator, cast
 
+from karppipeline.common import ImportException
 from karppipeline.models import Entry, PipelineConfig
 from karppipeline.util import json
 
@@ -95,17 +96,18 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
 
         def get_entries() -> Iterator[Entry]:
             for input_file in input_files:
-                fp = open(input_file)
+                with open(input_file) as fp:
+                    try:
+                        for line in fp:
+                            entry = json.loads(line)
 
-                for line in fp:
-                    entry = json.loads(line)
-
-                    # get the sort order from the input JSON
-                    # this could be configurable to speed up
-                    keys = list(entry.keys())
-                    _update_json_source_order(source_order, keys)
-                    size[0] += 1
-                    yield entry
-                fp.close()
+                            # get the sort order from the input JSON
+                            # this could be configurable to speed up
+                            keys = list(entry.keys())
+                            _update_json_source_order(source_order, keys)
+                            size[0] += 1
+                            yield entry
+                    except UnicodeDecodeError:
+                        raise ImportException(f"Unicode decode error for file: {input_file}")
 
     return source_order, size, get_entries()

@@ -36,19 +36,27 @@ def print_config_tree(configs: list["ConfigHandle"]) -> None:
         )
 
 
-def print_config(configs: list["ConfigHandle"], resource_id: str) -> None:
+def print_config(configs: list["ConfigHandle"], resource_id: str | None = None) -> None:
     """
     for each resource print the resolved configuration
     """
     from karppipeline.util import json
 
-    for resource in configs:
-        if resource_id == resource.config_dict["resource_id"]:
-            del resource.config_dict["workdir"]
-            print(json.dumps(resource.config_dict, pretty=True))
-            break
+    config = None
+    if resource_id:
+        for resource in configs:
+            if resource_id == resource.config_dict["resource_id"]:
+                config = resource
+                break
+        else:
+            print(f'{{"error": "could not find {resource_id}"}}')
     else:
-        print(f'{{"error": "could not find {resource_id}"}}')
+        if len(configs) == 1:
+            config = configs[0]
+        else:
+            print('{"error": "many configs found, give resource id"}')
+    if config:
+        print(json.dumps(config.config_dict, pretty=True))
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,7 +95,7 @@ def parse_args() -> argparse.Namespace:
         "print-config",
         help="helper to see the configuration",
     )
-    p_print_config.add_argument("resource_id")
+    p_print_config.add_argument("resource_id", nargs="?")
 
     def add_output_params(p: argparse.ArgumentParser):
         group = p.add_mutually_exclusive_group()

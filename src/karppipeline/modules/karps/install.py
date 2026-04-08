@@ -75,7 +75,9 @@ def _run_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig, sql_file
     else:
         cmd = f"ssh {shlex.quote(host)} {shlex.quote(f'mysql {db_name}')}"
     _run_subprocess(
-        f"cat {shlex.quote(str(sqlfile))} | {cmd}", shell=True, err_msg="Unable to run database file for Karp-s install/uninstall"
+        f"cat {shlex.quote(str(sqlfile))} | {cmd}",
+        shell=True,
+        err_msg="Unable to run database file for Karp-s install/uninstall",
     )
 
 

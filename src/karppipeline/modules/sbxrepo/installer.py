@@ -1,21 +1,11 @@
 from pathlib import Path
 import shutil
-import subprocess
 
 from karppipeline.models import PipelineConfig
 from karppipeline.modules.sbxrepo.models import SBXRepoConfig
 
-from karppipeline.common import get_output_dir
 from karppipeline.util.git import GitRepo
 from karppipeline.modules.sbxrepo.common import _get_metadata_file
-
-
-def _upload_data(pipeline_config: PipelineConfig, sbmetadata_config: SBXRepoConfig):
-    host = sbmetadata_config.data.remote_host
-    remote_dir = sbmetadata_config.data.data_dir
-    output_dir = get_output_dir(pipeline_config.workdir)
-    file = output_dir / f"{pipeline_config.resource_id}.jsonl"
-    subprocess.check_call(["rsync", str(file), f"{host}:{remote_dir}"])
 
 
 def _install_metadata_file(pipeline_config: PipelineConfig, sbmetadata_config: SBXRepoConfig):

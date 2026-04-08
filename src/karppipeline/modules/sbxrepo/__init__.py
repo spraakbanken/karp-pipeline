@@ -6,13 +6,14 @@ from karppipeline.models import Entry, PipelineConfig
 from karppipeline.run import Dependency
 
 """
-generate SBX metadata file
+exporter generates SBX metadata file
+installer moves file to the configured Git repo and commits
 """
 
 __all__ = ["export", "install", "dependencies"]
 
 
-dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema")]
+dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema"), Dependency("dataupload")]
 
 
 def export(config: PipelineConfig, module_data: dict[str, Any]) -> Sequence[Callable[[Entry], Entry]]:
@@ -35,9 +36,8 @@ def install(pipeline_config: PipelineConfig, uninstall=False):
     if uninstall:
         raise InstallException("Uninstall not supported for sbxrepo module")
     from karppipeline.modules.sbxrepo.common import _get_config
-    from karppipeline.modules.sbxrepo.installer import _upload_data, _install_metadata_file
+    from karppipeline.modules.sbxrepo.installer import _install_metadata_file
     from karppipeline.modules.sbxrepo.models import SBXRepoConfig
 
     sbmetadata_config: SBXRepoConfig = _get_config(pipeline_config)
-    _upload_data(pipeline_config, sbmetadata_config)
     _install_metadata_file(pipeline_config, sbmetadata_config)

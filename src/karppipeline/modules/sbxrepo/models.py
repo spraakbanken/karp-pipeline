@@ -46,8 +46,6 @@ class Data(BaseModel):
     class Config:
         extra = "forbid"
 
-    data_dir: str
-    remote_host: str | None = None
     download_url_template: str
     interface_url_template: str
 

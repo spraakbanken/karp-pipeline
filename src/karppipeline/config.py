@@ -147,19 +147,32 @@ def _find_configs() -> Iterator[ConfigHandle]:
         )
 
 
-def _merge_configs(orig_parent_config: Map | None, child_config: Map) -> Map:
+def _merge_configs(orig_parent_config: Map | None, child_config: Map, top_level: bool = True) -> Map:
     """
     Overwrites main_config with values from resource_config
     """
     if not orig_parent_config:
         return child_config
+
     parent_config = copy.deepcopy(orig_parent_config)
     for key, value in child_config.items():
         main_val = parent_config.get(key)
-        if value is None:
+        if top_level and key == "fields":
+            # load the defined fields
+            fields = {}
+            for field in orig_parent_config.get("fields", ()):
+                fields[field["name"]] = field
+
+            for field in cast(list, value):
+                if field["name"] in fields and field != fields[field["name"]]:
+                    # overrides
+                    logger.warning(f"field {field['name']} is redefined in child config")
+                fields[field["name"]] = field
+            parent_config["fields"] = list(fields.values())
+        elif value is None:
             continue
         elif main_val and isinstance(main_val, dict) and isinstance(value, dict):
-            tmp = _merge_configs(main_val, value)
+            tmp = _merge_configs(main_val, value, top_level=False)
             parent_config[key] = tmp
         else:
             parent_config[key] = value

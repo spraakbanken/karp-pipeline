@@ -27,5 +27,5 @@ def _install_metadata_file(pipeline_config: PipelineConfig, sbmetadata_config: S
 
     main_dir = Path(yaml_path)
     # TODO versioning may affect name of file
-    shutil.copy(metadata_yaml, main_dir / f"{resource_id}.yaml")
+    shutil.copy(metadata_yaml, main_dir / "yaml/lexicon" / f"{resource_id}.yaml")
     repo.commit_all(msg=f"add {pipeline_config.resource_id}", allow_empty=False)

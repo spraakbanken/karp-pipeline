@@ -77,7 +77,10 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
                         if field.target in new_entry:
                             del new_entry[field.target]
                 else:
-                    val = entry[field.name]
+                    if field.name in new_entry:
+                        val = new_entry[field.name]
+                    else:
+                        val = entry[field.name]
                     new_entry[field.target] = _convert_value(field.converter, val)
 
         # clean up all text fields

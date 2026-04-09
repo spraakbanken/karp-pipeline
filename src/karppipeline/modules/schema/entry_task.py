@@ -2,6 +2,7 @@ import importlib
 import logging
 from typing import Any, Iterator, Callable
 import unicodedata
+from karppipeline.common import PipelineException
 from karppipeline.models import EntrySchema, PipelineConfig, Entry, InferredField
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,8 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
             return converters[converter]["convert"](config.resource_id, val)
         return val
 
+    categorical_fields = {field.name: field for field in config.fields if field.categories}
+
     def convert(entry: Entry | None) -> Entry | None:
         if not entry:
             return None
@@ -83,14 +86,32 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
                         val = entry[field.name]
                     new_entry[field.target] = _convert_value(field.converter, val)
 
-        # clean up all text fields
         for key in entry_schema.keys():
+            # clean up all text fields
             if entry_schema[key].type == "text" and key in new_entry:
                 if not entry_schema[key].collection:
                     new_entry[key] = _clean_text(new_entry[key]) if new_entry[key] else None
                 else:
                     # this also causes all None to be []
                     new_entry[key] = [_clean_text(text) for text in new_entry[key] or []]
+
+            # check that categorical types use allowed values
+            if key in categorical_fields:
+                error = False
+                field = categorical_fields[key]
+                val = new_entry[key]
+                if field.collection:
+                    for val in new_entry[key]:
+                        if val not in field.categories:
+                            error = True
+                            break
+                else:
+                    if val not in field.categories:
+                        error = True
+                if error:
+                    raise PipelineException(
+                        f"{val} not a valid category in field {key} (Allowed: {', '.join(field.categories)})"
+                    )
 
         return new_entry
 

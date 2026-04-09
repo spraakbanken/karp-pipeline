@@ -30,7 +30,28 @@ def export(
     source_order: list[str] = module_data["schema"]["source_order"]
     size: int = module_data["schema"]["size"]
 
-    fields: list[dict[str, object]] = [field.asdict() for field in entry_schema.values()]
+    configured_fields = {field.name: field for field in config.fields}
+
+    fields: list[dict[str, object]] = []
+    for field in entry_schema.values():
+        field_dict = field.asdict()
+
+        # TODO make sure this works for sub-fields
+        if field.name in configured_fields:
+            conf_field = configured_fields[field.name]
+            if conf_field.label:
+                field_dict["label"] = conf_field.label.model_dump()
+            else:
+                field_dict["label"] = field.name
+            if conf_field.categories:
+                field_dict["categories"] = conf_field.categories
+            if conf_field.category_labels:
+                field_dict["category_labels"] = {
+                    category: category_label.model_dump()
+                    for category, category_label in conf_field.category_labels.items()
+                }
+
+        fields.append(field_dict)
 
     create_output_dir(config.workdir)
     module_config = _get_module_config(config)

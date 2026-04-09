@@ -5,6 +5,8 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Iterator, cast
+
+from yaml import YAMLError
 from karppipeline.common import PipelineException, Map
 from karppipeline.models import PipelineConfig
 from karppipeline.util import yaml
@@ -22,10 +24,13 @@ class ConfigHandle:
     warnings: list[str] = field(default_factory=list)
 
 
-def load_config(config_handle) -> PipelineConfig:
+def load_config(config_handle, ignore_validation=False) -> PipelineConfig:
     config_dict = config_handle.config_dict
     config_dict["workdir"] = config_handle.workdir
-    return PipelineConfig.model_validate(config_dict)
+    if ignore_validation:
+        return PipelineConfig.model_construct(**config_dict)
+    else:
+        return PipelineConfig.model_validate(config_dict)
 
 
 def find_configs() -> list[ConfigHandle]:
@@ -51,7 +56,10 @@ def _find_configs() -> Iterator[ConfigHandle]:
         if config_path.exists():
             with open(config_path) as fp:
                 logger.info(f"Reading {config_path}")
-                return yaml.load(fp)
+                try:
+                    return yaml.load(fp)
+                except YAMLError:
+                    raise PipelineException(f"Could not parse YAML, check file: {config_path}")
         return None
 
     warnings = []

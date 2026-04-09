@@ -63,7 +63,7 @@ def suc_to_ud(_, pos: str) -> str:
         "JJ": "ADJ",
         "AB": "ADV",
         "HA": "ADV",
-        "KN": "CONJ",
+        "KN": "CCONJ",
         "SN": "SCONJ",
         "PP": "ADP",
         "RG": "NUM",

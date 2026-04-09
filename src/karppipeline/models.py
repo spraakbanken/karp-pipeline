@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 import re
-from typing import Self, cast
+from typing import Any, Self, cast
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -13,6 +13,8 @@ from pydantic import (
     computed_field,
     model_validator,
 )
+
+from karppipeline.common import PipelineException
 
 type Entry = Mapping[str, object]
 type EntrySchema = dict[str, InferredField]
@@ -66,13 +68,19 @@ class InferredField:
     name: str
     type: str
     collection: bool = False
+
     # if type==table
     fields: dict[str, Self] = field(default_factory=dict)
+
     extra: dict[str, object] = field(default_factory=dict)
 
     def copy(self):
         return InferredField(
-            name=self.name, type=self.type, collection=self.collection, fields=dict(self.fields), extra=dict(self.extra)
+            name=self.name,
+            type=self.type,
+            collection=self.collection,
+            fields=dict(self.fields),
+            extra=dict(self.extra),
         )
 
     @property
@@ -97,6 +105,28 @@ class ConfiguredField(BaseModel):
     collection: bool = False
     fields: dict[str, Self] = Field(default_factory=dict)
     label: MultiLang
+    categories: list[str] = Field(default_factory=list)
+    category_labels: dict[str, MultiLang] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    def validate_before(cls, data: Any) -> Any:
+        """
+        If a categorical fields does not have configured values, we
+        """
+        if isinstance(data, dict):
+            if (
+                "type" in data
+                and data["type"] == "categorical"
+                and ("categories" not in data or not data["categories"])
+            ):
+                if "name" in data and data["name"]:
+                    field_name = data["name"]
+                else:
+                    field_name = "<field>"
+                raise PipelineException(
+                    f"Missing categories, run `karp-pipeline generate-categorical-values {field_name}` to create category from current resource."
+                )
+        return data
 
     @model_validator(mode="after")
     def validate_fields_rules(self):
@@ -108,6 +138,7 @@ class ConfiguredField(BaseModel):
                 raise ValueError("inner field may not be collection")
             if child.fields:
                 raise ValueError("inner field may only be nested one level deep")
+
         return self
 
 

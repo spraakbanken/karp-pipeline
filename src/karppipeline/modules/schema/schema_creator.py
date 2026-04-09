@@ -108,8 +108,7 @@ def _add_max_length(field: InferredField, value: str):
 
 def compare_to_configured_fields(config: PipelineConfig, entry_schema: EntrySchema):
     """
-    Check that the inferred types are the same as the configured type, except if we infer "text"
-    and the actual type is "categorical" which is ok.
+    Check that the inferred types are the same as the configured type.
     """
 
     def to_dict(elems: list[ConfiguredField]) -> dict[str, ConfiguredField]:
@@ -125,6 +124,7 @@ def compare_to_configured_fields(config: PipelineConfig, entry_schema: EntrySche
                 error = True
             elif config_field.type != field.type:
                 error = True
+
             if error:
                 raise PipelineException(
                     f"{key} is configured, but it is not the same as in this resource, must rename."

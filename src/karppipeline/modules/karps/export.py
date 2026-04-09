@@ -17,7 +17,7 @@ def create_karps_backend_config(
     entry_schema: EntrySchema,
     source_order: list[str],
     size: int,
-    fields: list[dict[str, str]],
+    fields: list[dict[str, object]],
 ):
     karps_workdir = create_output_dir(pipeline_config.workdir) / "karps"
     karps_workdir.mkdir(exist_ok=True)

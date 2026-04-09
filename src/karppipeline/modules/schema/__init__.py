@@ -2,8 +2,9 @@ import logging
 from pathlib import Path
 import pickle
 from karppipeline.common import create_output_dir
+from karppipeline.models import PipelineConfig
 from karppipeline.modules.schema.entry_task import get_entry_converter
-from karppipeline.modules.schema.schema_creator import pre_import_resource
+from karppipeline.modules.schema.schema_creator import pre_import_resource, compare_to_configured_fields
 from karppipeline.util import json
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ __all__ = ["export", "dependencies", "load"]
 dependencies = []
 
 
-def export(config, _):
+def export(config: PipelineConfig, _):
     """
     Loads the input data and deduces schema, source order and size.
 
@@ -26,6 +27,9 @@ def export(config, _):
 
     # modifies entry_schema based on config and returns modification task for entries
     entry_converter = get_entry_converter(config, entry_schema)
+
+    # check that the inferred fields are the same as any configured fields
+    compare_to_configured_fields(config, entry_schema)
 
     logger.info("Using entry schema: " + json.dumps(entry_schema))
 

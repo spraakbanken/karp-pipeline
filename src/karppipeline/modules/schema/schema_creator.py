@@ -1,6 +1,8 @@
 from typing import Iterator, cast
 from karppipeline.common import PipelineException
 from karppipeline.models import EntrySchema, PipelineConfig, Entry, InferredField
+from karppipeline.models import ConfiguredField
+
 from karppipeline.read import read_data
 
 type_lookup: dict[type, str] = {int: "integer", str: "text", bool: "bool", float: "float"}
@@ -14,8 +16,9 @@ def pre_import_resource(pipeline_config: PipelineConfig) -> tuple[EntrySchema, l
     source_order, size, entries = read_data(pipeline_config)
 
     # generate schema from entries - _create_field will exaust the generator and make size updated
-    fields = _create_fields(entries)
-    return (fields, source_order, size)
+    entry_schema = _create_fields(entries)
+
+    return (entry_schema, source_order, size)
 
 
 def _create_fields(entries: Iterator[Entry]) -> EntrySchema:
@@ -101,3 +104,28 @@ def _add_max_length(field: InferredField, value: str):
     Sets or update the longest value seen for this field, only works for text fields
     """
     field.extra["length"] = max(cast(int, field.extra.get("length", 0)), len(value))
+
+
+def compare_to_configured_fields(config: PipelineConfig, entry_schema: EntrySchema):
+    """
+    Check that the inferred types are the same as the configured type, except if we infer "text"
+    and the actual type is "categorical" which is ok.
+    """
+
+    def to_dict(elems: list[ConfiguredField]) -> dict[str, ConfiguredField]:
+        return {elem.name: elem for elem in elems}
+
+    config_fields: dict[str, ConfiguredField] = to_dict(config.fields)
+    for key, field in entry_schema.items():
+        field: InferredField
+        if key in config_fields:
+            config_field = config_fields[key]
+            error = False
+            if config_field.collection != field.collection:
+                error = True
+            elif config_field.type != field.type:
+                error = True
+            if error:
+                raise PipelineException(
+                    f"{key} is configured, but it is not the same as in this resource, must rename."
+                )

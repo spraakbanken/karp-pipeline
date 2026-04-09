@@ -34,7 +34,6 @@ def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
         entry_tasks.extend(new_tasks)
 
     # for each entry, do the needed tasks
-    # TODO read_data actually loads the entire file, but here we should read one line at a time
     for entry in read_data(config)[2]:
         updated_entry = entry
         for task in entry_tasks:

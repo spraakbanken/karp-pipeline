@@ -3,7 +3,7 @@ import shlex
 import shutil
 import subprocess
 
-from karppipeline.common import get_output_dir, InstallException
+from karppipeline.common import get_output_dir, PipelineException
 from karppipeline.logging import get_logger
 from karppipeline.modules.karps.models import KarpsConfig
 from karppipeline.models import PipelineConfig
@@ -22,7 +22,7 @@ def _run_subprocess(cmd: str | list[str], err_msg=None, check=True, shell=False,
         if err:
             logger.error(err)
     if check and p.returncode:
-        raise InstallException(err_msg)
+        raise PipelineException(err_msg)
     return p.returncode
 
 

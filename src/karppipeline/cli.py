@@ -168,15 +168,15 @@ def cli():
     # If help was invoked, parse_args will exit. Imports go after parse_args so that help is generated as fast as possible
     import logging
     from karppipeline.config import find_configs, load_config
-    from karppipeline.install import install, uninstall
-    from karppipeline.run import run
+    from karppipeline.execution.install import install, uninstall
+    from karppipeline.execution.run import run
     import karppipeline.logging as karps_logging
-    from karppipeline.common import ImportException, InstallException
+    from karppipeline.common import PipelineException
 
     logger = logging.getLogger(__name__)
     try:
         configs = find_configs()
-    except ImportException as e:
+    except PipelineException as e:
         logger.error(f"Exception for resource: {e.args[0]}")
         return 1
 
@@ -238,7 +238,7 @@ def cli():
                 # TODO inform user if there was warnings
                 print(f"{green_box()} {config.resource_id}\t success")
         except Exception as e:
-            if isinstance(e, InstallException) or isinstance(e, ImportException):
+            if isinstance(e, PipelineException):
                 logger.error(f"Exception for resource: {e.args[0]}")
             else:
                 logger.error("Exception for resource", exc_info=True)

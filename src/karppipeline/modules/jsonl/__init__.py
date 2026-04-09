@@ -1,8 +1,8 @@
 import logging
+from karppipeline.execution.dependency import Dependency
 from karppipeline.models import Entry, PipelineConfig
 
 from karppipeline.common import create_output_dir
-from karppipeline.run import Dependency
 from karppipeline.util import json
 
 __all__ = ["export", "dependencies"]

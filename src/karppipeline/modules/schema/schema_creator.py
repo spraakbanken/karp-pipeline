@@ -1,5 +1,5 @@
 from typing import Iterator, cast
-from karppipeline.common import ImportException
+from karppipeline.common import PipelineException
 from karppipeline.models import EntrySchema, PipelineConfig, Entry, InferredField
 from karppipeline.read import read_data
 
@@ -28,8 +28,8 @@ def _create_fields(entries: Iterator[Entry]) -> EntrySchema:
             values = entry[key]
             try:
                 _check_or_create_field(schema, key, values)
-            except ImportException as e:
-                raise ImportException(f"Error for entry on row: {idx + 1}: " + e.args[0])
+            except PipelineException as e:
+                raise PipelineException(f"Error for entry on row: {idx + 1}: " + e.args[0])
     return schema
 
 
@@ -45,7 +45,7 @@ def _check_or_create_field(schema, key, values):
     if not isinstance(values, list):
         values = (values,)
     elif field and not field.collection:
-        raise ImportException(f'Mismatch, field: "{key}"')
+        raise PipelineException(f'Mismatch, field: "{key}"')
     else:
         collection = True
     for value in values:
@@ -55,7 +55,7 @@ def _check_or_create_field(schema, key, values):
         elif not collection or (field and not field.type == "table"):
             # if the value is a dict, it must be in a collection and if field has been set previously
             # it must have type == table
-            raise ImportException(f'Mismatch, field: "{key}"')
+            raise PipelineException(f'Mismatch, field: "{key}"')
         else:
             # type == table, find sub fields
             # sub-fields do not have collection: true although they could be seen as such...
@@ -75,7 +75,7 @@ def _check_or_create_field(schema, key, values):
             if inner_value is None:
                 break
             if isinstance(inner_value, list) or isinstance(inner_value, dict):
-                raise ImportException("Level of nesting not allowed.")
+                raise PipelineException("Level of nesting not allowed.")
             if inner_field:
                 _check_type(inner_key, inner_field, inner_value)
             else:
@@ -93,7 +93,7 @@ def _check_type(key: str, field: InferredField, value: str | float | int | bool)
     actual_type_name = type_lookup[type(value)]
     # it is fine to first infer float and then seeing integer values
     if not (actual_type_name == "integer" and field_type == "float") and field_type != actual_type_name:
-        raise ImportException(f'Mismatch, field: "{key}". Was {actual_type_name}, expected {field_type}.')
+        raise PipelineException(f'Mismatch, field: "{key}". Was {actual_type_name}, expected {field_type}.')
 
 
 def _add_max_length(field: InferredField, value: str):

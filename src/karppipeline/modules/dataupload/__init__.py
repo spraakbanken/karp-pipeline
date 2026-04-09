@@ -5,12 +5,13 @@ from typing import Callable, Sequence
 
 from pydantic import BaseModel
 
-from karppipeline.common import InstallException, get_output_dir
+from karppipeline.common import PipelineException, get_output_dir
+from karppipeline.execution.dependency import Dependency
 from karppipeline.models import Entry, PipelineConfig
-from karppipeline.run import Dependency
 
 """
-generate SBX metadata file
+export: does nothing
+install: copy jsonl output to another directory, optionally on a remote host
 """
 
 __all__ = ["export", "install", "dependencies"]
@@ -29,13 +30,13 @@ class DataUploadConfig(BaseModel):
     remote_host: str | None = None
 
 
-def export(_) -> Sequence[Callable[[Entry], Entry]]:
+def export(*_) -> Sequence[Callable[[Entry], Entry]]:
     return ()
 
 
 def install(pipeline_config: PipelineConfig, uninstall=False):
     if uninstall:
-        raise InstallException("Uninstall not supported for dataupload module")
+        raise PipelineException("Uninstall not supported for dataupload module")
 
     data_upload_config: DataUploadConfig = _get_config(pipeline_config)
     _upload_data(pipeline_config, data_upload_config)

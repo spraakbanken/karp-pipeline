@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Iterator, cast
 
-from karppipeline.common import ImportException
+from karppipeline.common import PipelineException
 from karppipeline.models import Entry, PipelineConfig
 from karppipeline.util import json
 
@@ -108,6 +108,6 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
                             size[0] += 1
                             yield entry
                     except UnicodeDecodeError:
-                        raise ImportException(f"Unicode decode error for file: {input_file}")
+                        raise PipelineException(f"Unicode decode error for file: {input_file}")
 
     return source_order, size, get_entries()

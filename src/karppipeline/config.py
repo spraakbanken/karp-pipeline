@@ -5,7 +5,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Iterator, cast
-from karppipeline.common import ImportException, Map
+from karppipeline.common import PipelineException, Map
 from karppipeline.models import PipelineConfig
 from karppipeline.util import yaml
 
@@ -58,7 +58,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
     start_path = Path(os.getcwd())
     config = read_config(start_path)
     if not config:
-        raise ImportException(f"config: could not find a config in {start_path}")
+        raise PipelineException(f"config: could not find a config in {start_path}")
 
     parent_configs = []
     # useful for debugging
@@ -74,7 +74,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
             # set config to parent_config
             config = read_config(Path(cast(str, path)).parent)
             if not config:
-                raise ImportException(f"config: could not find parent ({path})")
+                raise PipelineException(f"config: could not find parent ({path})")
             if "parent" in config:
                 warnings.append("A parent config contains `parent`-key which is not supported and will be ignored.")
             break
@@ -109,7 +109,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
                         parent_config_paths = [parent_path]
                         other_parent = read_config(parent_path)
                         if not other_parent:
-                            raise ImportException(f"config: could not find parent ({path})")
+                            raise PipelineException(f"config: could not find parent ({path})")
                         if "parent" in other_parent:
                             warnings.append(
                                 "A parent config contains `parent`-key which is not supported and will be ignored."

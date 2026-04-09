@@ -3,11 +3,7 @@ from pathlib import Path
 type Map = dict[str, object]
 
 
-class InstallException(Exception):
-    pass
-
-
-class ImportException(Exception):
+class PipelineException(Exception):
     pass
 
 

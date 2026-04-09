@@ -1,9 +1,9 @@
 import logging
 import subprocess
 from typing import Callable, cast
-from karppipeline.common import ImportException, InstallException, create_output_dir, get_output_dir
+from karppipeline.common import PipelineException, create_output_dir, get_output_dir
+from karppipeline.execution.dependency import Dependency
 from karppipeline.models import Entry, EntrySchema, PipelineConfig
-from karppipeline.run import Dependency
 from karppipeline.util import yaml
 
 logger = logging.getLogger("karp")
@@ -20,7 +20,7 @@ def export(config: PipelineConfig, module_data) -> list[Callable[[Entry], Entry]
     entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
     name = module_data["sbxmetadata"].get("name") or config.name and config.name.model_dump()
     if not name:
-        raise ImportException("karp: 'name' missing")
+        raise PipelineException("karp: 'name' missing")
     _create_karp_backend_config(config, entry_schema, name)
     return []
 
@@ -41,7 +41,7 @@ def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchem
 
 def install(config: PipelineConfig, uninstall=False):
     if uninstall:
-        raise InstallException("Uninstall not supported for sbxrepo module")
+        raise PipelineException("Uninstall not supported for sbxrepo module")
 
     config_file = get_output_dir(config.workdir) / "karp" / f"{config.resource_id}.yaml"
 

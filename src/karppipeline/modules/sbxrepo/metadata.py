@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import cast
 import urllib.request
-from karppipeline.common import ImportException
+from karppipeline.common import PipelineException
 from karppipeline.util.frozendict import frozendict
 
 import jsonschema_rs
@@ -27,7 +27,7 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
 
     if "name" not in metadata:
         if not pipeline_config.name:
-            raise ImportException("sbxrepo: 'name' not found")
+            raise PipelineException("sbxrepo: 'name' not found")
         metadata["name"] = pipeline_config.name.model_dump(exclude_none=True)
     if "short_description" not in metadata and "description" not in metadata:
         if not pipeline_config.description:

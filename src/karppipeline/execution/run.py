@@ -1,9 +1,8 @@
-from dataclasses import dataclass
-import importlib
 import logging
 from typing import Callable
 
-from karppipeline.common import ImportException
+
+from karppipeline.execution.dependency import resolve_commands
 from karppipeline.read import read_data
 
 from karppipeline.models import Entry, PipelineConfig
@@ -12,37 +11,8 @@ from karppipeline.models import Entry, PipelineConfig
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Dependency:
-    name: str
-    optional: bool = False
-
-
 def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
-    if subcommand is None:
-        invoked_cmds = config.export.default
-    else:
-        invoked_cmds = subcommand
-
-    resolved_cmds = []
-    mods = {}
-
-    def resolve(invoked_cmds):
-        """
-        Traverses the dependency tree and adds dependencies to resolved_cmds in the order they need to run
-        """
-        for cmd in invoked_cmds:
-            try:
-                mod = importlib.import_module("karppipeline.modules." + cmd)
-                mods[cmd] = mod
-            except ModuleNotFoundError as e:
-                raise ImportException(f"{cmd} not found") from e
-            # only add optional dependencies if they are listed in config.export.default
-            resolve([dep.name for dep in mod.dependencies if not dep.optional or dep.name in config.export.default])
-            if cmd not in resolved_cmds:
-                resolved_cmds.append(cmd)
-
-    resolve(invoked_cmds)
+    resolved_cmds, mods = resolve_commands(subcommand, config.export.default)
 
     entry_tasks: list[Callable[[Entry | None], Entry]] = []
     module_data = {}

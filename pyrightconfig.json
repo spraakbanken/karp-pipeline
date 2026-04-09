@@ -3,7 +3,6 @@
         "src",
         "tests"
     ],
-    "reportMissingImports": "information",
     "reportGeneralTypeIssues": "none",
     "typeCheckingMode": "standard"
 }

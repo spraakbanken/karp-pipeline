@@ -1,5 +1,6 @@
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
+from enum import Enum
 from pathlib import Path
 import re
 from typing import Any, Self, cast
@@ -68,11 +69,14 @@ class InferredField:
     name: str
     type: str
     collection: bool = False
+    categorical: InitVar[bool] = False
 
     # if type==table
     fields: dict[str, Self] = field(default_factory=dict)
 
     extra: dict[str, object] = field(default_factory=dict)
+
+    categories: set[str] | None = None
 
     def copy(self):
         return InferredField(
@@ -81,11 +85,29 @@ class InferredField:
             collection=self.collection,
             fields=dict(self.fields),
             extra=dict(self.extra),
+            categories=set(self.categories) if self.categories is not None else None,
         )
+
+    def __post_init__(self, categorical) -> None:
+        if categorical:
+            self.categories = set()
+        if "length" not in self.extra:
+            self.extra = {"length": 0}
 
     @property
     def length(self) -> int:
         return cast(int, self.extra["length"])
+
+    def dump(self) -> dict[str, object]:
+        res: dict[str, object] = {
+            "type": self.type,
+            "name": self.name,
+            "collection": self.collection,
+            "fields": self.fields,
+            "extra": self.extra,
+            "categories": list(self.categories or []),
+        }
+        return res
 
     def asdict(self) -> dict[str, object]:
         """
@@ -96,15 +118,27 @@ class InferredField:
             res["collection"] = True
         if self.fields:
             res["fields"] = {name: field.asdict() for name, field in self.fields.items()}
+        if self.categories is not None:
+            res["categories"] = list(self.categories)
         return res
 
 
+class FieldTypeEnum(str, Enum):
+    text = "text"
+    integer = "integer"
+    float = "float"
+    bool = "bool"
+
+
 class ConfiguredField(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     name: str
-    type: str
+    type: FieldTypeEnum
     collection: bool = False
     fields: dict[str, Self] = Field(default_factory=dict)
     label: MultiLang
+    categorical: bool = False
     categories: list[str] = Field(default_factory=list)
     category_labels: dict[str, MultiLang] = Field(default_factory=dict)
 
@@ -140,6 +174,15 @@ class ConfiguredField(BaseModel):
                 raise ValueError("inner field may only be nested one level deep")
 
         return self
+
+    def to_inferred_field(self):
+        return InferredField(
+            name=self.name,
+            type=self.type,
+            collection=self.collection,
+            fields={field_name: field.to_inferred_field() for field_name, field in self.fields.items()},
+            categorical=self.categorical,
+        )
 
 
 CONVERTER_PATTERN = re.compile(

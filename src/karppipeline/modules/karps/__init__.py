@@ -35,7 +35,6 @@ def export(
     fields: list[dict[str, object]] = []
     for field in entry_schema.values():
         field_dict = field.asdict()
-
         # TODO make sure this works for sub-fields
         if field.name in configured_fields:
             conf_field = configured_fields[field.name]

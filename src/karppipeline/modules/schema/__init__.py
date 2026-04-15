@@ -31,7 +31,7 @@ def export(config: PipelineConfig, _):
     # check that the inferred fields are the same as any configured fields
     compare_to_configured_fields(config, entry_schema)
 
-    logger.info("Using entry schema: " + json.dumps(entry_schema))
+    logger.info("Using entry schema: " + json.dumps({key: field.dump() for key, field in entry_schema.items()}))
 
     with open(_get_data_path(config), "wb") as fp:
         pickle.dump({"entry_schema": entry_schema, "source_order": source_order, "size": size}, fp)

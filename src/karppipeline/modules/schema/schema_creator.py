@@ -16,12 +16,12 @@ def pre_import_resource(pipeline_config: PipelineConfig) -> tuple[EntrySchema, l
     source_order, size, entries = read_data(pipeline_config)
 
     # generate schema from entries - _create_field will exaust the generator and make size updated
-    entry_schema = _create_fields(entries)
+    entry_schema = _create_fields(pipeline_config, entries)
 
     return (entry_schema, source_order, size)
 
 
-def _create_fields(entries: Iterator[Entry]) -> EntrySchema:
+def _create_fields(pipeline_config: PipelineConfig, entries: Iterator[Entry]) -> EntrySchema:
     """
     Goes through the entries and each key in the entries and populates schema
     """
@@ -30,20 +30,21 @@ def _create_fields(entries: Iterator[Entry]) -> EntrySchema:
         for key in entry:
             values = entry[key]
             try:
-                _check_or_create_field(schema, key, values)
+                _check_or_create_field(pipeline_config, schema, key, values)
             except PipelineException as e:
                 raise PipelineException(f"Error for entry on row: {idx + 1}: " + e.args[0])
     return schema
 
 
-def _check_or_create_field(schema, key, values):
+def _check_or_create_field(pipeline_config, schema, key, values):
     """
     Called for each key and value in each entry
 
     For unknown fields, initializes the field, for known fields, check that the given values
     match the field.
     """
-    field = schema.get(key)
+    field: InferredField = schema.get(key)
+
     collection = False
     if not isinstance(values, list):
         values = (values,)
@@ -81,9 +82,21 @@ def _check_or_create_field(schema, key, values):
                 raise PipelineException("Level of nesting not allowed.")
             if inner_field:
                 _check_type(inner_key, inner_field, inner_value)
+                if inner_field.categories is not None:
+                    # collect all categories if categorical: true
+                    inner_field.categories.add(inner_value)
+
             else:
                 # not previously seen field, initializes type and name
-                inner_field = InferredField(type=type_lookup[type(inner_value)], name=inner_key)
+                categorical = False
+                for conf_field in pipeline_config.fields:
+                    if conf_field.name == inner_key and conf_field.categorical:
+                        categorical = True
+                        break
+
+                inner_field = InferredField(
+                    type=type_lookup[type(inner_value)], name=inner_key, categorical=categorical
+                )
                 inner_field.collection = collection
                 schema[inner_key] = inner_field
 

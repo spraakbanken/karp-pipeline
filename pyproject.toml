@@ -20,3 +20,4 @@ karp-pipeline = "karppipeline.cli:cli"
 
 [tool.uv]
 package = true
+exclude-newer = "90 days"

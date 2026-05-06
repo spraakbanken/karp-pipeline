@@ -2,7 +2,6 @@
 A lot of this is copied from Sparv and modified
 """
 
-
 from enum import StrEnum, auto
 import functools
 from karppipeline.models import InferredField
@@ -74,6 +73,7 @@ def suc_to_ud_update_schema(field: InferredField) -> InferredField:
     field.extra["length"] = 5
     return field
 
+
 @functools.cache
 def suc_to_ud(_, pos: str) -> str:
     """
@@ -119,6 +119,7 @@ def isof_to_ud_update_schema(field: InferredField) -> InferredField:
     field.extra["length"] = 5
     return field
 
+
 @functools.cache
 def isof_to_ud(_, pos: str) -> str:
     """
@@ -130,6 +131,7 @@ def isof_to_ud(_, pos: str) -> str:
 def sveak_to_ud_update_schema(field: InferredField) -> InferredField:
     field.extra["length"] = 5
     return field
+
 
 @functools.cache
 def sveak_to_ud(_, pos: str) -> str:

@@ -150,6 +150,19 @@ def sveak_to_ud(_, pos: str) -> str:
         raise ValueError(f"Unknown pos {pos}")
 
 
+def saol15_to_ud_update_schema(field: InferredField) -> InferredField:
+    field.extra["length"] = 5
+    return field
+
+
+@functools.cache
+def saol15_to_ud(_, pos: str) -> str:
+    """
+    Convert isofs internal markup for POS into ud (experimental)
+    """
+    return _saol15_to_ud.get(pos, UD_FALLBACK)
+
+
 _saldo_pos_to_suc = {
     "nn": "NN",
     "av": "JJ",
@@ -232,4 +245,26 @@ _isof_nyord_to_ud = {
     "verb, substantiv": Upos.X,
     "verb, substantiv, adjektiv": Upos.X,
     "övrigt": Upos.X,
+}
+
+_saol15_to_ud: dict[str, str] = {
+    "adjektiv": Upos.ADJ,
+    "adjektiviskt slutled": Upos.X,
+    "adverb": Upos.ADV,
+    "adverbiellt slutled": Upos.X,
+    "bestämd artikel": Upos.DET,
+    "förled": Upos.X,
+    "infinitivmärke": Upos.PART,
+    "interjektion": Upos.INTJ,
+    "konjunktion": Upos.CCONJ,
+    "namn": Upos.PROPN,
+    "obestämd artikel": Upos.DET,
+    "preposition": Upos.ADP,
+    "pronomen": Upos.PRON,
+    "räkneord": Upos.NUM,
+    "subjunktion": Upos.SCONJ,
+    "substantiv": Upos.NOUN,
+    "substantiviskt slutled": Upos.X,
+    "verb": Upos.VERB,
+    "verbalt slutled": Upos.X,
 }

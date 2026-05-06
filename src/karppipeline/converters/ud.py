@@ -2,7 +2,9 @@
 A lot of this is copied from Sparv and modified
 """
 
+
 from enum import StrEnum, auto
+import functools
 from karppipeline.models import InferredField
 
 
@@ -53,8 +55,8 @@ def saldo_to_ud_update_schema(field: InferredField) -> InferredField:
     return field
 
 
+@functools.cache
 def saldo_to_ud(_, pos: str) -> str:
-    # TODO memoize
     return suc_to_ud(None, saldo_to_suc(None, pos))
 
 
@@ -63,6 +65,7 @@ def saldo_to_suc_update_schema(field: InferredField) -> InferredField:
     return field
 
 
+@functools.cache
 def saldo_to_suc(_, pos: str) -> str:
     return _saldo_pos_to_suc[pos]
 
@@ -71,7 +74,7 @@ def suc_to_ud_update_schema(field: InferredField) -> InferredField:
     field.extra["length"] = 5
     return field
 
-
+@functools.cache
 def suc_to_ud(_, pos: str) -> str:
     """
     Convert SUC tags to UPOS.
@@ -116,7 +119,7 @@ def isof_to_ud_update_schema(field: InferredField) -> InferredField:
     field.extra["length"] = 5
     return field
 
-
+@functools.cache
 def isof_to_ud(_, pos: str) -> str:
     """
     Convert isofs internal markup for POS into ud (experimental)
@@ -128,7 +131,7 @@ def sveak_to_ud_update_schema(field: InferredField) -> InferredField:
     field.extra["length"] = 5
     return field
 
-
+@functools.cache
 def sveak_to_ud(_, pos: str) -> str:
     """
     Convert internal/legacy SveAk POS to ud

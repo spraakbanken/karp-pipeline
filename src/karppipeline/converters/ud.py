@@ -160,7 +160,7 @@ def saol15_to_ud_update_schema(field: InferredField) -> InferredField:
 @functools.cache
 def saol15_to_ud(_, pos: str) -> str:
     """
-    Convert isofs internal markup for POS into ud (experimental)
+    Convert saol15 internal markup for POS into ud
     """
     return _saol15_to_ud.get(pos, UD_FALLBACK)
 

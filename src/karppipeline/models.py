@@ -185,13 +185,15 @@ class ConfiguredField(BaseModel):
         )
 
 
+NAME_PATTERN = r"((['\"](?P<cited_name>([^:]+))['\"])|(?P<uncited_name>[^:\s]+))"
+
 CONVERTER_PATTERN = re.compile(
-    r"^((['\"](?P<cited_name>([^:]+))['\"])|(?P<uncited_name>([^:\s]+)))"
+    rf"^{NAME_PATTERN}"
     r"(?:\:(?P<converter>\w+(?:\.\w+)*))?"
     r"(?:\s+as\s+(?P<target>\w+))?$"
 )
 
-NOT_PATTERN = re.compile(r"^not\s(?P<name>\w+)")
+NOT_PATTERN = re.compile(rf"^not\s{NAME_PATTERN}")
 
 
 class ExportFieldConfig(RootModel[str]):
@@ -211,7 +213,7 @@ class ExportFieldConfig(RootModel[str]):
     def name(self) -> str:
         m = NOT_PATTERN.fullmatch(self.root)
         if m:
-            return m.group("name")
+            return m.group("cited_name") or m.group("uncited_name")
 
         m = CONVERTER_PATTERN.fullmatch(self.root)
         if m:

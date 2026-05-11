@@ -89,7 +89,7 @@ class InferredField:
         )
 
     def __post_init__(self, categorical) -> None:
-        if categorical:
+        if categorical and not self.categories:
             self.categories = set()
         if "length" not in self.extra:
             self.extra = {"length": 0}

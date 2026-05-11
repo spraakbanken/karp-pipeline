@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from karppipeline.builtins.generate_categorical_values import generate_categorical_values
+
 from karppipeline.util.terminal import bold, green_box, red_box
 
 
@@ -99,14 +99,6 @@ def parse_args() -> argparse.Namespace:
     )
     p_print_config.add_argument("resource_id", nargs="?")
 
-    # could be a module, but we don't support parameters to modules and adding the parameter in the configuration seems weird
-    p_print_config = subparsers.add_parser(
-        "generate-categorical-values",
-        help="helper to fetch categorical values for a field from a resource. <field_name> must be a \
-            source field and not an exported field.",
-    )
-    p_print_config.add_argument("field_name", nargs="?")
-
     def add_output_params(p: argparse.ArgumentParser):
         group = p.add_mutually_exclusive_group()
         group.add_argument(
@@ -200,14 +192,6 @@ def cli():
 
     if args.command == "print-config":
         print_config(configs, args.resource_id)
-        return 0
-
-    if args.command == "generate-categorical-values":
-        if len(configs) > 1:
-            raise PipelineException("Generate categorical values is only supported for one resource")
-        # ignore validation so that one can call this function even if categories are not defined on a categorical
-        config = load_config(configs[0], ignore_validation=True)
-        generate_categorical_values(config, args.field_name)
         return 0
 
     do_run = args.command == "run"

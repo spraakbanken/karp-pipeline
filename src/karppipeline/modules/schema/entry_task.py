@@ -63,6 +63,18 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
                 # TODO here we copy the schema from source field, but length may be different
                 field_copy = entry_schema[field.name].copy()
                 field_copy.name = field.target
+
+                # check if target field is configured as categorical
+                categorical = False
+                for conf_field in config.fields:
+                    if conf_field.name == field.target and conf_field.categorical:
+                        categorical = True
+                        break
+
+                # we must set categories to *not* None for the pipeline to understand that the field is categorical
+                if categorical and not field_copy.categories:
+                    field_copy.categories = set()
+
                 entry_schema[field.target] = field_copy
         # pre-import each converter
         if field.converter:

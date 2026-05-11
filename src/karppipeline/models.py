@@ -3,7 +3,7 @@ from dataclasses import InitVar, dataclass, field
 from enum import Enum
 from pathlib import Path
 import re
-from typing import Any, Self, cast
+from typing import Self, cast
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -15,7 +15,6 @@ from pydantic import (
     model_validator,
 )
 
-from karppipeline.common import PipelineException
 
 type Entry = Mapping[str, object]
 type EntrySchema = dict[str, InferredField]
@@ -141,26 +140,6 @@ class ConfiguredField(BaseModel):
     categorical: bool = False
     categories: list[str] = Field(default_factory=list)
     category_labels: dict[str, MultiLang] = Field(default_factory=dict)
-
-    @model_validator(mode="before")
-    def validate_before(cls, data: Any) -> Any:
-        """
-        If a categorical fields does not have configured values, we
-        """
-        if isinstance(data, dict):
-            if (
-                "type" in data
-                and data["type"] == "categorical"
-                and ("categories" not in data or not data["categories"])
-            ):
-                if "name" in data and data["name"]:
-                    field_name = data["name"]
-                else:
-                    field_name = "<field>"
-                raise PipelineException(
-                    f"Missing categories, run `karp-pipeline generate-categorical-values {field_name}` to create category from current resource."
-                )
-        return data
 
     @model_validator(mode="after")
     def validate_fields_rules(self):

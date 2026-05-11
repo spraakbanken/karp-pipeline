@@ -143,6 +143,9 @@ class ConfiguredField(BaseModel):
 
     @model_validator(mode="after")
     def validate_fields_rules(self):
+        if self.categories:
+            self.categorical = True
+
         if not self.collection and self.fields:
             raise ValueError("fields is only allowed when collection=True")
 

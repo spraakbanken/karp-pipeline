@@ -18,10 +18,36 @@ def create_karps_backend_config(
     entry_schema: EntrySchema,
     source_order: list[str],
     size: int,
-    fields: list[dict[str, object]],
 ):
+    while True:
+        entry = yield
+        if not entry:
+            break
+
+    fields: list[dict[str, object]] = []
+    # collected_categories = module_data["generate_categorical_values"]
+    configured_fields = {field.name: field for field in pipeline_config.fields}
+    for field in entry_schema.values():
+        field_dict = field.asdict()
+        # TODO make sure this works for sub-fields
+        if field.name in configured_fields:
+            conf_field = configured_fields[field.name]
+            if conf_field.label:
+                field_dict["label"] = conf_field.label.model_dump()
+            else:
+                field_dict["label"] = field.name
+            if conf_field.categorical:
+                field_dict["categories"] = conf_field.categories  # or collected_categories[conf_field.name]
+            if conf_field.category_labels:
+                field_dict["category_labels"] = {
+                    category: category_label.model_dump()
+                    for category, category_label in conf_field.category_labels.items()
+                }
+
+        fields.append(field_dict)
+
     karps_workdir = create_output_dir(pipeline_config.workdir) / "karps"
-    karps_workdir.mkdir(exist_ok=True)
+
     # these fields might already be present in backend config, install must merge this file and backend fields.yaml
     with open(karps_workdir / "fields.yaml", "w") as fp:
         yaml.dump(fields, fp)

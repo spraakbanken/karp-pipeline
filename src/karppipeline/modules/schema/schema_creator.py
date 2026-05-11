@@ -82,24 +82,10 @@ def _check_or_create_field(pipeline_config, schema, key, values):
                 raise PipelineException("Level of nesting not allowed.")
             if inner_field:
                 _check_type(inner_key, inner_field, inner_value)
-                if inner_field.categories is not None:
-                    # collect all categories if categorical: true
-                    inner_field.categories.add(inner_value)
 
             else:
                 # not previously seen field, initializes type and name
-                categorical = False
-                categories = None
-                for conf_field in pipeline_config.fields:
-                    if conf_field.name == inner_key and conf_field.categorical:
-                        categorical = True
-                        categories = set(conf_field.categories)
-                        break
-
-                inner_field = InferredField(
-                    type=type_lookup[type(inner_value)], name=inner_key, categorical=categorical, categories=categories
-                )
-                inner_field.collection = collection
+                inner_field = InferredField(type=type_lookup[type(inner_value)], name=inner_key, collection=collection)
                 schema[inner_key] = inner_field
 
             if inner_field and inner_field.type == "text":

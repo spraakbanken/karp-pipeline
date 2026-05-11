@@ -16,7 +16,12 @@ __all__ = ["export", "install", "dependencies"]
 logger = logging.getLogger(__name__)
 
 
-dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema"), Dependency("jsonl")]
+dependencies = [
+    Dependency("sbxmetadata", optional=True),
+    Dependency("schema"),
+    Dependency("jsonl"),
+    Dependency("generate_categorical_values"),
+]
 
 
 def export(
@@ -30,29 +35,10 @@ def export(
     source_order: list[str] = module_data["schema"]["source_order"]
     size: int = module_data["schema"]["size"]
 
-    configured_fields = {field.name: field for field in config.fields}
-
-    fields: list[dict[str, object]] = []
-    for field in entry_schema.values():
-        field_dict = field.asdict()
-        # TODO make sure this works for sub-fields
-        if field.name in configured_fields:
-            conf_field = configured_fields[field.name]
-            if conf_field.label:
-                field_dict["label"] = conf_field.label.model_dump()
-            else:
-                field_dict["label"] = field.name
-            if conf_field.categories:
-                field_dict["categories"] = conf_field.categories
-            if conf_field.category_labels:
-                field_dict["category_labels"] = {
-                    category: category_label.model_dump()
-                    for category, category_label in conf_field.category_labels.items()
-                }
-
-        fields.append(field_dict)
-
     create_output_dir(config.workdir)
+    karps_workdir = create_output_dir(config.workdir) / "karps"
+    karps_workdir.mkdir(exist_ok=True)
+
     module_config = _get_module_config(config)
 
     # sql_gen is a coroutine for creating the SQL file for backend
@@ -63,6 +49,7 @@ def export(
     name = sbxmetadata.get("name") or config.name and config.name.model_dump()
     if not name:
         raise PipelineException("karps: 'name' missing")
+
     description = (
         sbxmetadata.get("short_description")
         or sbxmetadata.get("description")
@@ -71,20 +58,28 @@ def export(
     )
     if not description:
         raise PipelineException("karps: 'description' missing")
-    backend_export.create_karps_backend_config(
-        config, module_config, name, description, entry_schema, source_order, size, fields
+
+    config_gen = backend_export.create_karps_backend_config(
+        config, module_config, name, description, entry_schema, source_order, size
     )
 
     next(sql_gen)
+    next(config_gen)
 
     def task(entry: Entry | None) -> Entry | None:
         nonlocal sql_gen
+        nonlocal config_gen
         logger.debug("karps entry task")
         try:
             sql_gen.send(entry)
         except StopIteration:
             # if this happens, the entries are exhausted
             sql_gen = None
+        try:
+            config_gen.send(entry)
+        except StopIteration:
+            # if this happens, the entries are exhausted
+            config_gen = None
         return entry
 
     return [task]

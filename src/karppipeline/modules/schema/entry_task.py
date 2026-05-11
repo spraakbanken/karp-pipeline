@@ -1,5 +1,7 @@
 import importlib
+import importlib.util
 import logging
+from pathlib import Path
 from typing import Any, Iterator, Callable
 import unicodedata
 from karppipeline.common import PipelineException
@@ -15,9 +17,25 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
     """
 
     def _get_converter(converter: str) -> dict[str, Callable[[object], object]]:
-        [module, func] = converter.split(".")
-        mod = importlib.import_module("karppipeline.converters." + module)
+        ref = converter.split(".")
+        if len(ref) == 2:
+            [module, func] = ref
+            mod = importlib.import_module("karppipeline.converters." + module)
+        else:
+            plugin_path = Path(config.workdir, "plugins")
+            func = ref[0]
+            spec = importlib.util.spec_from_file_location("plugin", str(plugin_path / "converters.py"))
+            if not spec or not spec.loader:
+                raise PipelineException(
+                    "Resource is trying to use an unqualified function (X:Z as Y), but no code file was found for resource."
+                )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            if not hasattr(mod, func):
+                raise PipelineException(f"function {func} not found")
+
         func_obj = getattr(mod, func)
+
         update_schema = getattr(mod, func + "_update_schema")
         return {"update_schema": update_schema, "convert": func_obj}
 

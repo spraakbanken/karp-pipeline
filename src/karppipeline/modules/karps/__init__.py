@@ -63,7 +63,17 @@ def export(
     name = sbxmetadata.get("name") or config.name and config.name.model_dump()
     if not name:
         raise PipelineException("karps: 'name' missing")
-    backend_export.create_karps_backend_config(config, module_config, name, entry_schema, source_order, size, fields)
+    description = (
+        sbxmetadata.get("short_description")
+        or sbxmetadata.get("description")
+        or config.description
+        and config.description.model_dump()
+    )
+    if not description:
+        raise PipelineException("karps: 'description' missing")
+    backend_export.create_karps_backend_config(
+        config, module_config, name, description, entry_schema, source_order, size, fields
+    )
 
     next(sql_gen)
 

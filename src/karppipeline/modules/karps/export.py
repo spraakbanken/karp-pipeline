@@ -14,6 +14,7 @@ def create_karps_backend_config(
     pipeline_config: PipelineConfig,
     karps_config: KarpsConfig,
     name: dict[str, str],
+    description: dict[str, str],
     entry_schema: EntrySchema,
     source_order: list[str],
     size: int,
@@ -84,8 +85,7 @@ def create_karps_backend_config(
         raise ImportError(f"entry_word: {karps_config.entry_word.field}, but field is not available in the resource")
     if karps_config.tags:
         backend_config["tags"] = karps_config.tags
-    if pipeline_config.description:
-        backend_config["description"] = pipeline_config.description.model_dump()
+    backend_config["description"] = description
     if pipeline_config.limited_access:
         backend_config["limited_access"] = pipeline_config.limited_access
     if pipeline_config.protected_metadata:

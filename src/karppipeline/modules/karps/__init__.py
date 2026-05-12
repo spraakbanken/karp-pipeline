@@ -27,7 +27,7 @@ dependencies = [
 def export(
     config: PipelineConfig,
     module_data,
-) -> list[Callable[[Entry | None], Entry | None]]:
+) -> Callable[[Entry | None], Entry | None]:
     """
     Create configuration and SQL data file for Karp-s backend
     """
@@ -82,7 +82,7 @@ def export(
             config_gen = None
         return entry
 
-    return [task]
+    return task
 
 
 def install(pipeline_config: PipelineConfig, uninstall=False):

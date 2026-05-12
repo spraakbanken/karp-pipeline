@@ -34,4 +34,4 @@ def export(config: PipelineConfig, _):
         gen.send(entry)
         return entry
 
-    return (task,)
+    return task

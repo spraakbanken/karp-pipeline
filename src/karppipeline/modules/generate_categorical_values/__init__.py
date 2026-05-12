@@ -57,4 +57,4 @@ def export(config: PipelineConfig, module_data):
             ...
         return entry
 
-    return [entry_task]
+    return entry_task

@@ -1,9 +1,9 @@
 import logging
 import subprocess
-from typing import Callable, cast
+from typing import cast
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.execution.dependency import Dependency
-from karppipeline.models import Entry, EntrySchema, PipelineConfig
+from karppipeline.models import EntrySchema, PipelineConfig
 from karppipeline.util import yaml
 
 logger = logging.getLogger("karp")
@@ -16,13 +16,12 @@ __all__ = ["export", "install", "dependencies"]
 dependencies = [Dependency("jsonl"), Dependency("sbxmetadata", optional=True)]
 
 
-def export(config: PipelineConfig, module_data) -> list[Callable[[Entry], Entry]]:
+def export(config: PipelineConfig, module_data):
     entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
     name = module_data["sbxmetadata"].get("name") or config.name and config.name.model_dump()
     if not name:
         raise PipelineException("karp: 'name' missing")
     _create_karp_backend_config(config, entry_schema, name)
-    return []
 
 
 def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchema, name: dict[str, str]):

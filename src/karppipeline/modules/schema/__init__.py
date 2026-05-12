@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 __all__ = ["export", "dependencies", "load"]
 
 
-# generate schema, source_order and size
 dependencies = []
 
 
@@ -37,7 +36,7 @@ def export(config: PipelineConfig, _):
         pickle.dump({"entry_schema": entry_schema, "source_order": source_order, "size": size}, fp)
 
     # return task to include, exclude, rename or update fields in enries (based on export.fields)
-    return (entry_converter,)
+    return entry_converter
 
 
 def load(config) -> dict[str, object]:

@@ -1,9 +1,9 @@
-from typing import Any, Callable, Sequence
+from typing import Any
 
 
 from karppipeline.common import PipelineException
 from karppipeline.execution.dependency import Dependency
-from karppipeline.models import Entry, PipelineConfig
+from karppipeline.models import PipelineConfig
 
 """
 exporter generates SBX metadata file
@@ -17,7 +17,7 @@ dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema")]
 install_dependencies = [Dependency("dataupload")]
 
 
-def export(config: PipelineConfig, module_data: dict[str, Any]) -> Sequence[Callable[[Entry], Entry]]:
+def export(config: PipelineConfig, module_data: dict[str, Any]):
     """
     This module creates a metadata file valid for the SBX repo (https://spraakbanken.gu.se/om/internt/teknik/metadata).
 
@@ -30,7 +30,6 @@ def export(config: PipelineConfig, module_data: dict[str, Any]) -> Sequence[Call
 
     # create and validate file, save it in output directory
     _create_sb_metadata_file(config, schema_data["size"], metadata)
-    return ()
 
 
 def install(pipeline_config: PipelineConfig, uninstall=False):

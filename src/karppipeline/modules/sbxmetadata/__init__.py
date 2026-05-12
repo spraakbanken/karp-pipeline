@@ -1,12 +1,11 @@
 from pathlib import Path
-from typing import Callable, Sequence
 import urllib.request
 from json import JSONDecodeError
 from urllib.error import HTTPError, URLError
 from karppipeline.common import create_output_dir
 import karppipeline.util.json as json
 
-from karppipeline.models import Entry, PipelineConfig
+from karppipeline.models import PipelineConfig
 
 __all__ = ["export", "load", "dependencies"]
 
@@ -17,14 +16,13 @@ dependencies = []
 def export(
     config: PipelineConfig,
     _,
-) -> Sequence[Callable[[Entry], Entry]]:
+):
     """
     Fetches available metadata from SBX metadata API.
     """
     metadata = _fetch_metadata_from_api(config.resource_id)
     with open(_get_data_path(config), "w") as fp:
         fp.write(json.dumps(metadata))
-    return ()
 
 
 def load(config) -> dict[str, object]:

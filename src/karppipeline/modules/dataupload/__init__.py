@@ -1,13 +1,12 @@
 from pathlib import Path
 import logging
 import subprocess
-from typing import Callable, Sequence
 
 from pydantic import BaseModel
 
 from karppipeline.common import PipelineException, get_output_dir
 from karppipeline.execution.dependency import Dependency
-from karppipeline.models import Entry, PipelineConfig
+from karppipeline.models import PipelineConfig
 
 """
 export: does nothing
@@ -30,8 +29,7 @@ class DataUploadConfig(BaseModel):
     remote_host: str | None = None
 
 
-def export(*_) -> Sequence[Callable[[Entry], Entry]]:
-    return ()
+def export(*_): ...
 
 
 def install(pipeline_config: PipelineConfig, uninstall=False):

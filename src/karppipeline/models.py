@@ -236,3 +236,11 @@ class PipelineConfig(BaseModel):
     @property
     def modules(self) -> dict[str, object]:
         return self.__pydantic_extra__ or {}
+
+    def get_field(self, field_name) -> ConfiguredField | None:
+        return self._dict_fields.get(field_name)
+
+    def model_post_init(self, _) -> None:
+        self._dict_fields = {}
+        for conf_field in self.fields:
+            self._dict_fields[conf_field.name] = conf_field

@@ -36,7 +36,7 @@ def _create_fields(pipeline_config: PipelineConfig, entries: Iterator[Entry]) ->
     return schema
 
 
-def _check_or_create_field(pipeline_config, schema, key, values):
+def _check_or_create_field(pipeline_config: PipelineConfig, schema, key, values):
     """
     Called for each key and value in each entry
 
@@ -85,7 +85,13 @@ def _check_or_create_field(pipeline_config, schema, key, values):
 
             else:
                 # not previously seen field, initializes type and name
-                inner_field = InferredField(type=type_lookup[type(inner_value)], name=inner_key, collection=collection)
+                conf_field = pipeline_config.get_field(inner_key)
+                categorical = False
+                if conf_field:
+                    categorical = conf_field.categorical
+                inner_field = InferredField(
+                    type=type_lookup[type(inner_value)], name=inner_key, collection=collection, categorical=categorical
+                )
                 schema[inner_key] = inner_field
 
             if inner_field and inner_field.type == "text":

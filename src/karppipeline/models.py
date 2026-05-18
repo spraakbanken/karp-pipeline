@@ -157,15 +157,6 @@ class ConfiguredField(BaseModel):
 
         return self
 
-    def to_inferred_field(self):
-        return InferredField(
-            name=self.name,
-            type=self.type,
-            collection=self.collection,
-            fields={field_name: field.to_inferred_field() for field_name, field in self.fields.items()},
-            categorical=self.categorical,
-        )
-
 
 NAME_PATTERN = r"((['\"](?P<cited_name>([^:]+))['\"])|(?P<uncited_name>[^:\s]+))"
 

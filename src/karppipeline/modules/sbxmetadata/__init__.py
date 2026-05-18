@@ -55,7 +55,7 @@ def _fetch_metadata_from_api(resource_id) -> dict[str, object]:
             del metadata["id"]
 
             # removing auto set values
-            for download in metadata["downloads"]:
+            for download in metadata.get("downloads", ()):
                 del download["last-modified"]
                 del download["size"]
 

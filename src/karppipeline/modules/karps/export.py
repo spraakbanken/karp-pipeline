@@ -192,6 +192,8 @@ def create_karps_sql(
                             )
                     elif field.type == "float":
                         column_type = "FLOAT"
+                    elif field.type == "bool":
+                        column_type = "BOOLEAN"
                     else:
                         raise Exception("unknown column type", field.type)
                     fields.append(f"`{field_name}` {column_type}")

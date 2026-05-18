@@ -43,7 +43,7 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
 
     # using immutable dicts to make it possible to use sets
     if "downloads" not in metadata:
-        downloads = set()
+        downloads = []
     else:
 
         def ensure_download_type(elem):
@@ -52,20 +52,21 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
                 elem["type"] = "lexicon"
             return elem
 
-        downloads = set([frozendict(ensure_download_type(elem)) for elem in cast(list, metadata["downloads"])])
+        downloads = [frozendict(ensure_download_type(elem)) for elem in cast(list, metadata["downloads"])]
     for download in sbxmetadata_config.metadata.downloads or ():
-        downloads.add(frozendict(download))
+        frozen_download = frozendict(download)
+        if frozen_download not in downloads:
+            downloads.append(frozen_download)
 
-    downloads.add(
-        frozendict(
-            {
-                "url": sbxmetadata_config.data.download_url_template.format(resource_id=pipeline_config.resource_id),
-                "license": sbxmetadata_config.metadata.license,
-                "format": "jsonl",
-                "type": "lexicon",
-            }
-        )
+    frozen_download = frozendict(
+        {
+            "url": sbxmetadata_config.data.download_url_template.format(resource_id=pipeline_config.resource_id),
+            "license": sbxmetadata_config.metadata.license,
+            "format": "jsonl",
+            "type": "lexicon",
+        }
     )
+    downloads.append(frozen_download)
     # unfreeze
     metadata["downloads"] = [dict(download) for download in downloads]
 

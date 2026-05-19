@@ -28,7 +28,7 @@ def resolve_commands(subcommand: list[str] | None, defaults: list[str], cmd_type
                 mod = importlib.import_module("karppipeline.modules." + cmd)
                 mods[cmd] = mod
             except ModuleNotFoundError as e:
-                raise PipelineException(f"{cmd} not found") from e
+                raise PipelineException(f'Module "{cmd}" not found') from e
             # only add optional dependencies if they are listed in defaults
             resolve(
                 [

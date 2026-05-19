@@ -86,11 +86,21 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsConfig, resou
     Moves the generated configuration file into a directory for incoming resources for Karp-s (must be configured in backend)
     if `karps_config.host` is set, all steps will be done on host using SSH
     """
-    output_dir = get_output_dir(pipeline_config.workdir) / "karps"
-    resource_dir = Path(karps_config.output_config_dir) / resource_id
-
     host = karps_config.config_host
+    output_dir = get_output_dir(pipeline_config.workdir) / "karps"
+    karps_config_dir = Path(karps_config.output_config_dir)
 
+    # ensure that the karps incoming config directory exists
+    if not host:
+        karps_config_dir.mkdir(exist_ok=True)
+    else:
+        cmd = f'ssh {shlex.quote(host)} "mkdir -p {karps_config_dir}"'
+        _run_subprocess(
+            cmd,
+            err_msg=f"Unable to create output directory on host {host}",
+        )
+
+    resource_dir = karps_config_dir / resource_id
     resource_file_path = resource_dir / "resource.yaml"
     resource_fields_file_path = resource_dir / "fields.yaml"
     resource_global_file_path = resource_dir / "global.yaml"

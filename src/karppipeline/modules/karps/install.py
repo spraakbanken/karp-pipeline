@@ -5,7 +5,7 @@ import subprocess
 
 from karppipeline.common import get_output_dir, PipelineException
 from karppipeline.logging import get_logger
-from karppipeline.modules.karps.models import KarpsConfig
+from karppipeline.modules.karps.models import KarpsInstallConfig
 from karppipeline.models import PipelineConfig
 
 logger = get_logger(__name__, "Karp-s installer")
@@ -49,15 +49,15 @@ def _rm_files_and_replace_parent(dir_to_replace: Path, files_to_remove: list[Pat
         )
 
 
-def remove_from_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig):
+def remove_from_db(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig):
     _run_db(pipeline_config, karps_config, "delete.sql")
 
 
-def add_to_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig):
+def add_to_db(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig):
     _run_db(pipeline_config, karps_config, "create.sql")
 
 
-def _run_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig, sql_file):
+def _run_db(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig, sql_file):
     """
     if karps.db_host is set, ssh + mysql will be used, else only mysql
     """
@@ -81,7 +81,7 @@ def _run_db(pipeline_config: PipelineConfig, karps_config: KarpsConfig, sql_file
     )
 
 
-def add_config(pipeline_config: PipelineConfig, karps_config: KarpsConfig, resource_id: str):
+def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig, resource_id: str):
     """
     Moves the generated configuration file into a directory for incoming resources for Karp-s (must be configured in backend)
     if `karps_config.host` is set, all steps will be done on host using SSH
@@ -145,7 +145,7 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsConfig, resou
         logger.info("karp-s-backend reloaded")
 
 
-def remove_config(karps_config: KarpsConfig, resource_id: str):
+def remove_config(karps_config: KarpsInstallConfig, resource_id: str):
     # try to reload the Karp-s backend (ok to fail, so don't print output from command and only write a warning)
     cmd = f"{karps_config.cli_path} remove {resource_id}"
     host = karps_config.config_host

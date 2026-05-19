@@ -234,13 +234,31 @@ class PipelineConfig(BaseModel):
     protected_metadata: bool = False
 
     @property
-    def modules(self) -> dict[str, object]:
+    def modules(self) -> dict[str, dict[str, object]]:
         return self.__pydantic_extra__ or {}
 
     def get_field(self, field_name) -> ConfiguredField | None:
         return self._dict_fields.get(field_name)
 
     def model_post_init(self, _) -> None:
+        # create a dict of the fields for easier access
         self._dict_fields = {}
         for conf_field in self.fields:
             self._dict_fields[conf_field.name] = conf_field
+
+        # resolve parents in modules
+        resolved = {}
+
+        def recurse(module_name, module):
+            if module_name in resolved:
+                return
+
+            if parent := module.get("parent"):
+                if parent in resolved:
+                    module.update(resolved[parent])
+                else:
+                    recurse(parent, self.modules[parent])
+            resolved[module_name] = module
+
+        for module_name, module in self.modules.items():
+            recurse(module_name, module)

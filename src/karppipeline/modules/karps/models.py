@@ -26,14 +26,7 @@ class EntryWord(BaseModel):
     description: MultiLang
 
 
-class KarpsConfig(BaseModel):
-    # the directory where pipeline should put new resources
-    output_config_dir: Path
-    cli_path: Path
-    # this both decides where to put files and where the cli is
-    config_host: str | None = None
-    db_database: str
-    db_host: str | None = None
+class KarpsExportConfig(BaseModel):
     # which charset to use in MariaDB
     db_charset: str = "utf8mb4"
     # which MariaDB collation to use
@@ -49,3 +42,13 @@ class KarpsConfig(BaseModel):
     # give either primary or secondary, depending on which list is easiest to populate. the other list will be populated automatically
     primary: list[str] = []
     secondary: list[str] = []
+
+
+class KarpsInstallConfig(KarpsExportConfig):
+    # the directory where pipeline should put new resources
+    output_config_dir: Path
+    cli_path: Path
+    # this both decides where to put files and where the cli is
+    config_host: str | None = None
+    db_database: str
+    db_host: str | None = None

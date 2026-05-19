@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
-    resolved_cmds, mods = resolve_commands(subcommand, config.export.default)
+    resolved_cmds, mods = resolve_commands(config, subcommand, config.export.default)
 
     entry_tasks: list[Callable[[Entry | None], Entry]] = []
     module_data = {}

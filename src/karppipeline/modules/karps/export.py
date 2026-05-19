@@ -3,7 +3,7 @@ from typing import Generator, Iterable, Iterator, Mapping
 
 
 from karppipeline.common import create_output_dir, get_output_dir
-from karppipeline.modules.karps.models import KarpsConfig
+from karppipeline.modules.karps.models import KarpsExportConfig
 from karppipeline.models import Entry, EntrySchema, PipelineConfig, InferredField
 from karppipeline.util import yaml
 
@@ -12,7 +12,7 @@ VARCHAR_CUTOFF = 400  # if a field contains values larger than this, use TEXT ty
 
 def create_karps_backend_config(
     pipeline_config: PipelineConfig,
-    karps_config: KarpsConfig,
+    karps_config: KarpsExportConfig,
     name: dict[str, str],
     description: dict[str, str],
     entry_schema: EntrySchema,
@@ -122,7 +122,7 @@ def create_karps_backend_config(
 
 
 def create_karps_sql(
-    pipeline_config: PipelineConfig, karps_config: KarpsConfig, resource_config: EntrySchema
+    pipeline_config: PipelineConfig, karps_config: KarpsExportConfig, resource_config: EntrySchema
 ) -> Generator[None, Entry | None, None]:
     def schema(table_name: str, structure: EntrySchema) -> tuple[str, str, str]:
         """

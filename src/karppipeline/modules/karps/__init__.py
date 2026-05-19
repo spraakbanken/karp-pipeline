@@ -4,7 +4,7 @@ from typing import Callable
 from karppipeline.common import PipelineException, create_output_dir
 from karppipeline.execution.dependency import Dependency
 import karppipeline.modules.karps.install as backend_install
-from karppipeline.modules.karps.models import KarpsConfig
+from karppipeline.modules.karps.models import KarpsExportConfig, KarpsInstallConfig
 from karppipeline.models import Entry, EntrySchema, PipelineConfig
 import karppipeline.modules.karps.export as backend_export
 
@@ -39,7 +39,7 @@ def export(
     karps_workdir = create_output_dir(config.workdir) / "karps"
     karps_workdir.mkdir(exist_ok=True)
 
-    module_config = _get_module_config(config)
+    module_config = _get_export_config(config)
 
     # sql_gen is a coroutine for creating the SQL file for backend
     sql_gen = backend_export.create_karps_sql(config, module_config, entry_schema)
@@ -85,12 +85,12 @@ def export(
     return task
 
 
-def install(pipeline_config: PipelineConfig, uninstall=False):
+def install(pipeline_config: PipelineConfig, uninstall=False, instance="karps"):
     """
     1. Move Karp-s backend configuration file to the configured backend configuration directory.
     2. Run the SQL file in the configured database.
     """
-    karps_config = _get_module_config(pipeline_config)
+    karps_config = _get_install_config(pipeline_config, instance)
     if not uninstall:
         backend_install.add_to_db(pipeline_config, karps_config)
         backend_install.add_config(pipeline_config, karps_config, pipeline_config.resource_id)
@@ -99,5 +99,9 @@ def install(pipeline_config: PipelineConfig, uninstall=False):
         backend_install.remove_config(karps_config, pipeline_config.resource_id)
 
 
-def _get_module_config(config):
-    return KarpsConfig.model_validate(config.modules["karps"])
+def _get_export_config(config, instance="karps"):
+    return KarpsExportConfig.model_validate(config.modules[instance])
+
+
+def _get_install_config(config, instance="karps"):
+    return KarpsInstallConfig.model_validate(config.modules[instance])

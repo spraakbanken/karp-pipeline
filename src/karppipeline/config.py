@@ -138,18 +138,15 @@ def _find_configs() -> Iterator[ConfigHandle]:
 
     children = find_children(start_path, current_dir_config, parent_config_paths)
 
-    if children:
-        for child, parent_config_paths, warnings in children:
-            yield ConfigHandle(
-                workdir=child["workdir"],
-                config_dict=child,
-                parents=[str(path.absolute().resolve()) for path in parent_config_paths],
-                warnings=warnings,
-            )
-    elif current_dir_config:
+    if current_dir_config:
+        current_dir_config["workdir"] = start_path
+        children.append((current_dir_config, parent_config_paths, warnings))
+
+    for child, parent_config_paths, warnings in children:
+        child.pop("parent", None)
         yield ConfigHandle(
-            workdir=start_path,
-            config_dict=current_dir_config,
+            workdir=child["workdir"],
+            config_dict=child,
             parents=[str(path.absolute().resolve()) for path in parent_config_paths],
             warnings=warnings,
         )

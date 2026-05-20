@@ -57,6 +57,7 @@ def print_config(configs: list["ConfigHandle"], resource_id: str | None = None) 
         else:
             print('{"error": "many configs found, give resource id"}')
     if config:
+        config.config_dict["workdir"] = str(config.config_dict["workdir"])
         print(json.dumps(config.config_dict, pretty=True))
 
 

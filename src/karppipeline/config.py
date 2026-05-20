@@ -138,7 +138,8 @@ def _find_configs() -> Iterator[ConfigHandle]:
 
     children = find_children(start_path, current_dir_config, parent_config_paths)
 
-    if current_dir_config:
+    if not children and current_dir_config:
+        # if there were no child configs found, add the current dir as the config
         current_dir_config["workdir"] = start_path
         children.append((current_dir_config, parent_config_paths, warnings))
 

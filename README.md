@@ -98,6 +98,8 @@ are added to the source code in this repository.
 
 Each (exporter) module adds its data to a subfolder in `output/`.
 
+Modules also have a dependency system. For example, `jsonl` declares `dependencies = [Dependency("schema")]`.
+
 ### schema
 
 Only an exporter. Used internally for everything related to the `export.fields` settings

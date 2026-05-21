@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 dependencies = [Dependency("schema")]
 
 
-def export(config: PipelineConfig, _):
+def export(config: PipelineConfig, _, **_kwargs):
     """
     Writes each entry to file
     """

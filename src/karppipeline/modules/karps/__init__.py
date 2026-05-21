@@ -1,5 +1,5 @@
 import logging
-from typing import Callable
+from typing import Callable, Final
 
 from karppipeline.common import PipelineException, create_output_dir
 from karppipeline.execution.dependency import Dependency
@@ -15,6 +15,7 @@ generate Karp-s backend configuration and SQL, could be broken up into two tasks
 __all__ = ["export", "install", "dependencies"]
 logger = logging.getLogger(__name__)
 
+MODULE_NAME: Final[str] = "karps"
 
 dependencies = [
     Dependency("sbxmetadata", optional=True),
@@ -24,10 +25,7 @@ dependencies = [
 ]
 
 
-def export(
-    config: PipelineConfig,
-    module_data,
-) -> Callable[[Entry | None], Entry | None]:
+def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> Callable[[Entry | None], Entry | None]:
     """
     Create configuration and SQL data file for Karp-s backend
     """
@@ -39,7 +37,7 @@ def export(
     karps_workdir = create_output_dir(config.workdir) / "karps"
     karps_workdir.mkdir(exist_ok=True)
 
-    module_config = _get_export_config(config)
+    module_config = _get_export_config(config, instance)
 
     # sql_gen is a coroutine for creating the SQL file for backend
     sql_gen = backend_export.create_karps_sql(config, module_config, entry_schema)
@@ -85,7 +83,7 @@ def export(
     return task
 
 
-def install(pipeline_config: PipelineConfig, uninstall=False, instance="karps"):
+def install(pipeline_config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
     """
     1. Move Karp-s backend configuration file to the configured backend configuration directory.
     2. Run the SQL file in the configured database.
@@ -99,9 +97,9 @@ def install(pipeline_config: PipelineConfig, uninstall=False, instance="karps"):
         backend_install.remove_config(karps_config, pipeline_config.resource_id)
 
 
-def _get_export_config(config, instance="karps"):
+def _get_export_config(config, instance):
     return KarpsExportConfig.model_validate(config.modules[instance])
 
 
-def _get_install_config(config, instance="karps"):
+def _get_install_config(config, instance):
     return KarpsInstallConfig.model_validate(config.modules[instance])

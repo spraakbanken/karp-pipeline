@@ -28,7 +28,7 @@ def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
                 else:
                     # add dependency so we don't have to look for the load method again
                     module_data[dependency_name] = None
-        entry_task = mod.export(config, module_data)
+        entry_task = mod.export(config, module_data, instance=cmd)
 
         # callables added to entry_tasks will be called for each entry
         if entry_task:

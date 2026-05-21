@@ -32,16 +32,16 @@ class DataUploadConfig(BaseModel):
 def export(*_): ...
 
 
-def install(pipeline_config: PipelineConfig, uninstall=False):
+def install(pipeline_config: PipelineConfig, uninstall=False, instance="dataupload"):
     if uninstall:
         raise PipelineException("Uninstall not supported for dataupload module")
 
-    data_upload_config: DataUploadConfig = _get_config(pipeline_config)
+    data_upload_config: DataUploadConfig = _get_config(pipeline_config, instance)
     _upload_data(pipeline_config, data_upload_config)
 
 
-def _get_config(pipeline_config: PipelineConfig):
-    return DataUploadConfig.model_validate(pipeline_config.modules["dataupload"])
+def _get_config(pipeline_config: PipelineConfig, instance):
+    return DataUploadConfig.model_validate(pipeline_config.modules[instance])
 
 
 def _upload_data(pipeline_config: PipelineConfig, data_upload_config: DataUploadConfig):

@@ -15,7 +15,7 @@ __all__ = ["export", "dependencies", "load"]
 dependencies = []
 
 
-def export(config: PipelineConfig, _):
+def export(config: PipelineConfig, _, **_kwargs):
     """
     Loads the input data and deduces schema, source order and size.
 

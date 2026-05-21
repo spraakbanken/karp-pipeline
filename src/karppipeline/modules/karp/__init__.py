@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from typing import cast
+from typing import Final, cast
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.execution.dependency import Dependency
 from karppipeline.models import EntrySchema, PipelineConfig
@@ -16,7 +16,10 @@ __all__ = ["export", "install", "dependencies"]
 dependencies = [Dependency("jsonl"), Dependency("sbxmetadata", optional=True)]
 
 
-def export(config: PipelineConfig, module_data):
+MODULE_NAME: Final[str] = "karp"
+
+
+def export(config: PipelineConfig, module_data, instance=MODULE_NAME):
     entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
     name = module_data["sbxmetadata"].get("name") or config.name and config.name.model_dump()
     if not name:
@@ -38,15 +41,15 @@ def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchem
         yaml.dump(karp_config, fp)
 
 
-def install(config: PipelineConfig, uninstall=False):
+def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
     if uninstall:
-        raise PipelineException("Uninstall not supported for sbxrepo module")
+        raise PipelineException("Uninstall not supported for module karp")
 
     config_file = get_output_dir(config.workdir) / "karp" / f"{config.resource_id}.yaml"
 
     # adding a resurce in Karp is done in three steps
     # creating resource with config
-    karps_config = cast(dict, config.modules["karp"])
+    karps_config = cast(dict, config.modules[instance])
     _karp_cli_runner(karps_config, ["resource", "create", str(config_file)])
     # adding entries
     data_file = get_output_dir(config.workdir) / f"{config.resource_id}.jsonl"

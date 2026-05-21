@@ -6,8 +6,8 @@ from karppipeline.models import PipelineConfig
 from karppipeline.modules.sbxrepo.models import SBXRepoConfig
 
 
-def _get_config(pipeline_config: PipelineConfig):
-    return SBXRepoConfig.model_validate(pipeline_config.modules["sbxrepo"])
+def _get_config(pipeline_config: PipelineConfig, instance):
+    return SBXRepoConfig.model_validate(pipeline_config.modules[instance])
 
 
 def _get_metadata_file(pipeline_config: PipelineConfig) -> Path:

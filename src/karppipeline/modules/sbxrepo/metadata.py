@@ -13,8 +13,8 @@ from karppipeline.util import json, yaml
 from karppipeline.modules.sbxrepo.common import _get_config, _get_metadata_file
 
 
-def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: dict[str, object]):
-    sbxmetadata_config: SBXRepoConfig = _get_config(pipeline_config)
+def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: dict[str, object], instance: str):
+    sbxmetadata_config: SBXRepoConfig = _get_config(pipeline_config, instance)
 
     metadata["size"] = {"entries": size}
 

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 dependencies = [Dependency("schema")]
 
 
-def export(config: PipelineConfig, module_data):
+def export(config: PipelineConfig, module_data, **_kwargs):
     entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
 
     fields = []

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import shutil
 
@@ -16,6 +17,5 @@ def _install_metadata_file(pipeline_config: PipelineConfig, sbmetadata_config: S
     metadata_yaml = _get_metadata_file(pipeline_config)
 
     main_dir = Path(yaml_path)
-    # TODO versioning may affect name of file
     shutil.copy(metadata_yaml, main_dir / "yaml/lexicon" / f"{resource_id}.yaml")
     repo.commit_all(msg=f"add {pipeline_config.resource_id}", allow_empty=False)

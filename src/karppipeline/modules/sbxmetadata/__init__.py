@@ -13,10 +13,7 @@ __all__ = ["export", "load", "dependencies"]
 dependencies = []
 
 
-def export(
-    config: PipelineConfig,
-    _,
-):
+def export(config: PipelineConfig, _, **_kwargs):
     """
     Fetches available metadata from SBX metadata API.
     """
@@ -25,13 +22,13 @@ def export(
         fp.write(json.dumps(metadata))
 
 
-def load(config) -> dict[str, object]:
+def load(config: PipelineConfig) -> dict[str, object]:
     with open(_get_data_path(config)) as fp:
         metadata = json.loads(fp.read())
     return metadata
 
 
-def _get_data_path(config) -> Path:
+def _get_data_path(config: PipelineConfig) -> Path:
     module_dir = create_output_dir(config.workdir) / "sbxmetadata"
     module_dir.mkdir(exist_ok=True)
     return module_dir / "metadata.json"

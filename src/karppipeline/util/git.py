@@ -22,6 +22,9 @@ class GitRepo:
         self._run("init")
         self._run("commit", "--message", "init", "--allow-empty")
 
+    def pull(self):
+        self._run("pull")
+
     def commit_all(self, msg=None, allow_empty=True):
         self._run("add", "--all")
         commit_args = []

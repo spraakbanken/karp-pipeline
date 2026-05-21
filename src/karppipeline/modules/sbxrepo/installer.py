@@ -19,6 +19,9 @@ def _install_metadata_file(pipeline_config: PipelineConfig, sbmetadata_config: S
     resource_id = pipeline_config.resource_id
     metadata_yaml = _get_metadata_file(pipeline_config)
 
+    # make sure the checkoed out branch is at the latest change
+    repo.pull()
+
     main_dir = Path(yaml_path)
     shutil.copy(metadata_yaml, main_dir / "yaml/lexicon" / f"{resource_id}.yaml")
     repo.commit_all(msg=f"add {pipeline_config.resource_id}", allow_empty=False)

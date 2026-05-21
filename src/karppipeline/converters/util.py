@@ -14,3 +14,11 @@ def to_int(_, val: str) -> int:
         return int(val)
     except ValueError:
         raise PipelineException(f"util:to_int failed on value: {val}")
+
+
+def replace_underscore_update_schema(field: InferredField) -> InferredField:
+    return field
+
+
+def replace_underscore(_, val: str) -> str:
+    return val.replace("_", " ")

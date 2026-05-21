@@ -81,10 +81,7 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
         ]
     metadata["type"] = "lexicon"
 
-    if "contact_info" not in metadata:
-        if not sbxmetadata_config.metadata.fallbacks:
-            raise RuntimeError("sbxrepo: 'contact_info' not found")
-        metadata["contact_info"] = sbxmetadata_config.metadata.fallbacks.contact_info
+    _set_fallbacks(sbxmetadata_config, metadata)
 
     # load and test against JSON schema for SBX metadata
     with urllib.request.urlopen(sbxmetadata_config.metadata.schema_) as response:
@@ -101,3 +98,25 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
 
 def _get_current_date_string():
     return datetime.now().strftime("%Y-%m-%d")
+
+
+def _set_fallbacks(config: SBXRepoConfig, metadata: dict[str, object]):
+    """
+    Find all metadata keys that have a configured fallback and try to set these
+    """
+    if not config.metadata.fallbacks:
+        return
+
+    for fallback_attr in config.metadata.fallbacks.model_dump(exclude_unset=True).keys():
+        _set_fallback(config, metadata, fallback_attr)
+
+
+def _set_fallback(config: SBXRepoConfig, metadata: dict[str, object], name: str):
+    """
+    Set <name> in metadata if it was not already populated in <metadata>
+    """
+    fallbacks = config.metadata.fallbacks
+    if name not in metadata or not metadata[name]:
+        if not fallbacks or not (fallback := getattr(fallbacks, name)):
+            raise RuntimeError(f"sbxrepo: '{name}' not found")
+        metadata[name] = fallback

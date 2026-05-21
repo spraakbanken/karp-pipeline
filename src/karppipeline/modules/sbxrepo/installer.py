@@ -9,6 +9,9 @@ from karppipeline.util.git import GitRepo
 from karppipeline.modules.sbxrepo.common import _get_metadata_file
 
 
+logger = logging.getLogger(__name__)
+
+
 def _install_metadata_file(pipeline_config: PipelineConfig, sbmetadata_config: SBXRepoConfig):
     yaml_path = sbmetadata_config.metadata.yaml_export_path
     repo = GitRepo(yaml_path)

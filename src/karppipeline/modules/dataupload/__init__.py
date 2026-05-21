@@ -37,7 +37,10 @@ def install(pipeline_config: PipelineConfig, uninstall=False, instance="datauplo
         raise PipelineException("Uninstall not supported for dataupload module")
 
     data_upload_config: DataUploadConfig = _get_config(pipeline_config, instance)
-    _upload_data(pipeline_config, data_upload_config)
+    if pipeline_config.limited_access:
+        logger.info("Cannot upload data for resource with limited access")
+    else:
+        _upload_data(pipeline_config, data_upload_config)
 
 
 def _get_config(pipeline_config: PipelineConfig, instance):

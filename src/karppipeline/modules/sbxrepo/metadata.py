@@ -58,15 +58,17 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
         if frozen_download not in downloads:
             downloads.append(frozen_download)
 
-    frozen_download = frozendict(
-        {
-            "url": sbxmetadata_config.data.download_url_template.format(resource_id=pipeline_config.resource_id),
-            "license": sbxmetadata_config.metadata.license,
-            "format": "jsonl",
-            "type": "lexicon",
-        }
-    )
-    downloads.append(frozen_download)
+    if not pipeline_config.limited_access:
+        # only add download if the resource is open
+        frozen_download = frozendict(
+            {
+                "url": sbxmetadata_config.data.download_url_template.format(resource_id=pipeline_config.resource_id),
+                "license": sbxmetadata_config.metadata.license,
+                "format": "jsonl",
+                "type": "lexicon",
+            }
+        )
+        downloads.append(frozen_download)
     # unfreeze
     metadata["downloads"] = [dict(download) for download in downloads]
 

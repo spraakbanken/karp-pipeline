@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Final
 
 
@@ -16,6 +17,7 @@ __all__ = ["export", "install", "dependencies"]
 dependencies = [Dependency("sbxmetadata", optional=True), Dependency("schema")]
 install_dependencies = [Dependency("dataupload")]
 
+logger = logging.getLogger(__name__)
 
 MODULE_NAME: Final[str] = "sbxrepo"
 
@@ -38,9 +40,15 @@ def export(config: PipelineConfig, module_data: dict[str, Any], instance=MODULE_
 def install(pipeline_config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
     if uninstall:
         raise PipelineException("Uninstall not supported for sbxrepo module")
+
+    if pipeline_config.protected_metadata:
+        logger.info("Cannot add metadata file to repo when metadata is protected")
+        return
+
     from karppipeline.modules.sbxrepo.common import _get_config
     from karppipeline.modules.sbxrepo.installer import _install_metadata_file
     from karppipeline.modules.sbxrepo.models import SBXRepoConfig
 
     sbmetadata_config: SBXRepoConfig = _get_config(pipeline_config, instance)
     _install_metadata_file(pipeline_config, sbmetadata_config)
+    logger.info(f"Added SBX metadata file to {sbmetadata_config.metadata.yaml_export_path}")

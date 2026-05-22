@@ -5,11 +5,10 @@ description = "Lexical infrastructure"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "jsonschema-rs==0.37.4",
-    "pydantic>=2.12.5",
-    "pyyaml>=6.0.3",
-    "orjson>=3.11.5",
-    "mysql-connector-python==9.5.0",
+    "jsonschema-rs==0.42.1",
+    "pydantic==2.12.5",
+    "pyyaml==6.0.3",
+    "orjson==3.11.7",
 ]
 
 [dependency-groups]
@@ -21,3 +20,5 @@ karp-pipeline = "karppipeline.cli:cli"
 [tool.uv]
 package = true
 exclude-newer = "90 days"
+add-bounds = "major"
+

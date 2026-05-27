@@ -121,6 +121,10 @@ def create_karps_backend_config(
         yaml.dump(backend_config, fp)
 
 
+def _use_namespace(namespace, field_name):
+    return f"_{namespace}_{field_name}"
+
+
 def create_karps_sql(
     pipeline_config: PipelineConfig, karps_config: KarpsExportConfig, resource_config: EntrySchema
 ) -> Generator[None, Entry | None, None]:
@@ -152,11 +156,13 @@ def create_karps_sql(
             indices = []
             for field in _structure:
                 field_name = field.name
+                if pipeline_config.protected_metadata:
+                    field_name = _use_namespace(pipeline_config.resource_id, field_name)
                 if field.collection:
                     if field.type == "table":
                         columns = field.fields
                     else:
-                        columns = {field.name: field}
+                        columns = {field_name: field}
                     # same but not collection
                     table_fields = (
                         InferredField(name=val.name, type=val.type, collection=False, extra=val.extra)
@@ -253,6 +259,8 @@ def create_karps_sql(
                 columns = []
                 main_values = []
                 for field_name, val in entry.items():
+                    if pipeline_config.protected_metadata:
+                        field_name = _use_namespace(pipeline_config.resource_id, field_name)
                     if isinstance(val, list):
                         for x in val:
                             if isinstance(x, dict):

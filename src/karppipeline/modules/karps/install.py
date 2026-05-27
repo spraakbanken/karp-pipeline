@@ -97,6 +97,7 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig
         cmd = f'ssh {shlex.quote(host)} "mkdir -p {karps_config_dir}"'
         _run_subprocess(
             cmd,
+            shell=True,
             err_msg=f"Unable to create output directory on host {host}",
         )
 

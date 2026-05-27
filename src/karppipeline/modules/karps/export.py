@@ -180,10 +180,10 @@ def create_karps_sql(
                     COLLATE {karps_config.db_collation};
                     """)
 
-                    for col_name, inner_field in columns.items():
+                    for idx, (col_name, inner_field) in enumerate(columns.items()):
                         if inner_field.type == "text" and inner_field.length <= VARCHAR_CUTOFF:
                             indices.append(
-                                f"CREATE INDEX `{inner_table_name}_{col_name}_idx` ON `{inner_table_name}`(`{col_name}`({inner_field.extra['length']}));"
+                                f"CREATE INDEX `{inner_table_name}_{idx}_idx` ON `{inner_table_name}`(`{col_name}`({inner_field.extra['length']}));"
                             )
                 else:
                     if field.type == "integer":

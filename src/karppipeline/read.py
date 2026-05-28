@@ -1,4 +1,5 @@
 import csv
+from json import JSONDecodeError
 import logging
 from pathlib import Path
 from typing import Iterator, cast
@@ -98,8 +99,15 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
             for input_file in input_files:
                 with open(input_file) as fp:
                     try:
-                        for line in fp:
-                            entry = json.loads(line)
+                        for line_nr, line in enumerate(fp):
+                            if not line.strip():
+                                # we allow empty lines
+                                continue
+
+                            try:
+                                entry = json.loads(line)
+                            except JSONDecodeError:
+                                raise PipelineException(f"Could not parse JSON on line: {line_nr}")
 
                             # get the sort order from the input JSON
                             # this could be configurable to speed up

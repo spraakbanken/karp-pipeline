@@ -25,6 +25,23 @@ dependencies = [
 ]
 
 
+def _add_namespace_to_schema(namespace: str, schema: EntrySchema) -> EntrySchema:
+    new_schema = {}
+    for key, val in schema.items():
+        new_key = _add_namespace_to_field(namespace, key)
+        val.name = new_key
+        new_schema[new_key] = val
+    return new_schema
+
+
+def _add_namespace_to_fields(namespace, fields: list[str]) -> list[str]:
+    return [_add_namespace_to_field(namespace, field) for field in fields]
+
+
+def _add_namespace_to_field(namespace: str, field: str) -> str:
+    return "_" + namespace + "_" + field
+
+
 def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> Callable[[Entry | None], Entry | None]:
     """
     Create configuration and SQL data file for Karp-s backend
@@ -39,8 +56,21 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
 
     module_config = _get_export_config(config, instance)
 
+    if config.protected_metadata:
+        # if a resource uses protected_metadata: true, we will use the resource ID as a namespace
+        modified_entry_schema = _add_namespace_to_schema(config.resource_id, entry_schema)
+        modified_source_order = _add_namespace_to_fields(config.resource_id, source_order)
+
+        # update entry_word, primary and secondary
+        module_config.entry_word.field = _add_namespace_to_field(config.resource_id, module_config.entry_word.field)
+        module_config.primary = _add_namespace_to_fields(config.resource_id, module_config.primary)
+        module_config.secondary = _add_namespace_to_fields(config.resource_id, module_config.secondary)
+    else:
+        modified_entry_schema = entry_schema
+        modified_source_order = source_order
+
     # sql_gen is a coroutine for creating the SQL file for backend
-    sql_gen = backend_export.create_karps_sql(config, module_config, entry_schema)
+    sql_gen = backend_export.create_karps_sql(config, module_config, modified_entry_schema)
 
     # fallback value because sbxmetadata is optional
     sbxmetadata = module_data["sbxmetadata"] or {}
@@ -58,7 +88,7 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
         raise PipelineException("karps: 'description' missing")
 
     config_gen = backend_export.create_karps_backend_config(
-        config, module_config, name, description, entry_schema, source_order, size
+        config, module_config, name, description, modified_entry_schema, modified_source_order, size
     )
 
     next(sql_gen)
@@ -69,7 +99,13 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
         nonlocal config_gen
         logger.debug("karps entry task")
         try:
-            sql_gen.send(entry)
+            new_entry = entry
+            if entry and config.protected_metadata:
+                new_entry = {}
+                for key, val in entry.items():
+                    new_entry[_add_namespace_to_field(config.resource_id, key)] = val
+
+            sql_gen.send(new_entry)
         except StopIteration:
             # if this happens, the entries are exhausted
             sql_gen = None

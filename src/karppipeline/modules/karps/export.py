@@ -34,8 +34,6 @@ def create_karps_backend_config(
             conf_field = configured_fields[field.name]
             if conf_field.label:
                 field_dict["label"] = conf_field.label.model_dump()
-            else:
-                field_dict["label"] = field.name
             if conf_field.categorical:
                 field_dict["categories"] = conf_field.categories  # or collected_categories[conf_field.name]
             if conf_field.category_labels:
@@ -43,6 +41,15 @@ def create_karps_backend_config(
                     category: category_label.model_dump()
                     for category, category_label in conf_field.category_labels.items()
                 }
+
+        if "label" not in field_dict:
+            if pipeline_config.protected_metadata:
+                field_dict["label"] = field.name.split(f"_{pipeline_config.resource_id}_")[1]
+            else:
+                field_dict["label"] = field.name
+
+        if pipeline_config.protected_metadata:
+            field_dict["protected_metadata"] = True
 
         fields.append(field_dict)
 
@@ -108,7 +115,9 @@ def create_karps_backend_config(
         "updated": int(time.time()),
     }
     if karps_config.entry_word.field not in final_field_list:
-        raise PipelineException(f"entry_word: {karps_config.entry_word.field}, but field is not available in the resource")
+        raise PipelineException(
+            f"entry_word: {karps_config.entry_word.field}, but field is not available in the resource"
+        )
     if karps_config.tags:
         backend_config["tags"] = karps_config.tags
     backend_config["description"] = description
@@ -156,8 +165,6 @@ def create_karps_sql(
             indices = []
             for field in _structure:
                 field_name = field.name
-                if pipeline_config.protected_metadata:
-                    field_name = _use_namespace(pipeline_config.resource_id, field_name)
                 if field.collection:
                     if field.type == "table":
                         columns = field.fields
@@ -259,8 +266,6 @@ def create_karps_sql(
                 columns = []
                 main_values = []
                 for field_name, val in entry.items():
-                    if pipeline_config.protected_metadata:
-                        field_name = _use_namespace(pipeline_config.resource_id, field_name)
                     if isinstance(val, list):
                         for x in val:
                             if isinstance(x, dict):

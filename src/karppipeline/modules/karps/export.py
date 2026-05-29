@@ -2,7 +2,7 @@ import time
 from typing import Generator, Iterable, Iterator, Mapping
 
 
-from karppipeline.common import create_output_dir, get_output_dir
+from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.modules.karps.models import KarpsExportConfig
 from karppipeline.models import Entry, EntrySchema, PipelineConfig, InferredField
 from karppipeline.util import yaml
@@ -108,7 +108,7 @@ def create_karps_backend_config(
         "updated": int(time.time()),
     }
     if karps_config.entry_word.field not in final_field_list:
-        raise ImportError(f"entry_word: {karps_config.entry_word.field}, but field is not available in the resource")
+        raise PipelineException(f"entry_word: {karps_config.entry_word.field}, but field is not available in the resource")
     if karps_config.tags:
         backend_config["tags"] = karps_config.tags
     backend_config["description"] = description

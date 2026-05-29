@@ -91,11 +91,16 @@ def _find_configs() -> Iterator[ConfigHandle]:
     if config:
         parent_config_paths.append(path)
         parent_configs.append(config)
+
+    # reverse parents to make the order from parent -> child
     parent_configs = list(reversed(parent_configs))
-    # reverse parents to make it the correct order
     parent_config_paths = list(reversed(parent_config_paths))
-    target_config = parent_configs[0]
-    for parent_config in reversed(parent_configs[1:]):
+
+    # the actual resource config
+    target_config = parent_configs[-1]
+
+    # again reversed to start merging with the nearest ancestor
+    for parent_config in reversed(parent_configs[:-1]):
         target_config = _merge_configs(parent_config, target_config)
 
     # now all parents of the current dir configs, current_dir_config can still be None

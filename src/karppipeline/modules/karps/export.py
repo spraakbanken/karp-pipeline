@@ -66,7 +66,7 @@ def create_karps_backend_config(
             if name not in order_map:
                 order_map[name] = len(pipeline_config.fields) + i
 
-        # should be no unknown fields at this point
+        # should be no unknown fields at this point (TODO: not true, because generated fields are not in source_order)
         sorted_keys = sorted(fields, key=lambda x: order_map[x])
         return sorted_keys
 

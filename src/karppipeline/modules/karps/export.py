@@ -183,7 +183,7 @@ def create_karps_sql(
                     for idx, (col_name, inner_field) in enumerate(columns.items()):
                         if inner_field.type == "text" and inner_field.length <= VARCHAR_CUTOFF:
                             indices.append(
-                                f"CREATE INDEX `{inner_table_name}_{idx}_idx` ON `{inner_table_name}`(`{col_name}`({inner_field.extra['length']}));"
+                                f"CREATE INDEX `{inner_table_name[0:55]}_{idx}_idx` ON `{inner_table_name}`(`{col_name}`({inner_field.extra['length']}));"
                             )
                 else:
                     if field.type == "integer":
@@ -194,7 +194,7 @@ def create_karps_sql(
                         else:
                             column_type = f"VARCHAR({field.extra['length']})"
                             indices.append(
-                                f"CREATE INDEX `{table_name}__{field_name}_idx` ON `{table_name}`(`{field_name}`({field.extra['length']}));"
+                                f"CREATE INDEX `{(table_name + '__' + field_name)[0:60]}_idx` ON `{table_name}`(`{field_name}`({field.extra['length']}));"
                             )
                     elif field.type == "float":
                         column_type = "FLOAT"

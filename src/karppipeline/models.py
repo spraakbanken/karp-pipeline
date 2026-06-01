@@ -52,6 +52,17 @@ def MultiLangMinLength(min_length: int = 1) -> type:
                 return {"swe": value, "eng": value}
             return value
 
+        @property
+        def length(self) -> int:
+            if isinstance(self.root, dict):
+                return min(len(val) for val in self.root.values())
+            else:
+                return len(self.root)
+
+        @classmethod
+        def create(cls, name: str) -> Self:
+            return cls(root={lang: name for lang in ["swe", "eng"]})
+
     return MultiLangInner
 
 
@@ -136,10 +147,10 @@ class ConfiguredField(BaseModel):
     type: FieldTypeEnum
     collection: bool = False
     fields: dict[str, Self] = Field(default_factory=dict)
-    label: MultiLang
+    label: NonEmptyMultiLang
     categorical: bool = False
     categories: list[str] = Field(default_factory=list)
-    category_labels: dict[str, MultiLang] = Field(default_factory=dict)
+    category_labels: dict[str, NonEmptyMultiLang] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_fields_rules(self):
@@ -232,6 +243,8 @@ class PipelineConfig(BaseModel):
     limited_access: bool = False
     # the resource's metadata should only be available to users with access
     protected_metadata: bool = False
+    # if true, the name will be resource_id
+    resource_id_as_default_name: bool = False
 
     @property
     def modules(self) -> dict[str, dict[str, object]]:
@@ -245,6 +258,15 @@ class PipelineConfig(BaseModel):
         self._dict_fields = {}
         for conf_field in self.fields:
             self._dict_fields[conf_field.name] = conf_field
+
+        if self.name and self.name.length == 0:
+            self.name = None
+
+        if not self.name and self.resource_id_as_default_name:
+            self.name = MultiLang.create(self.resource_id)
+
+        if self.description and self.description.length == 0:
+            self.description = None
 
         # resolve parents in modules
         resolved = {}

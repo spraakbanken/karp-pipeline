@@ -5,7 +5,7 @@ from karppipeline.common import PipelineException, create_output_dir
 from karppipeline.execution.dependency import Dependency
 import karppipeline.modules.karps.install as backend_install
 from karppipeline.modules.karps.models import KarpsExportConfig, KarpsInstallConfig
-from karppipeline.models import Entry, EntrySchema, PipelineConfig
+from karppipeline.models import Entry, EntrySchema, MultiLang, PipelineConfig
 import karppipeline.modules.karps.export as backend_export
 
 """
@@ -84,8 +84,10 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
         or config.description
         and config.description.model_dump()
     )
-    if not description:
+    if not description and not config.allow_empty_description:
         raise PipelineException("karps: 'description' missing")
+    elif not description:
+        description = MultiLang.create("").model_dump()
 
     next(sql_gen)
 

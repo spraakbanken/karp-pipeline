@@ -245,6 +245,8 @@ class PipelineConfig(BaseModel):
     protected_metadata: bool = False
     # if true, the name will be resource_id
     resource_id_as_default_name: bool = False
+    # if true, description can be empty
+    allow_empty_description: bool = False
 
     @property
     def modules(self) -> dict[str, dict[str, object]]:

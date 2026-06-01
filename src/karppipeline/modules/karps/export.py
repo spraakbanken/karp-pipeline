@@ -19,11 +19,6 @@ def create_karps_backend_config(
     source_order: list[str],
     size: int,
 ):
-    while True:
-        entry = yield
-        if not entry:
-            break
-
     fields: list[dict[str, object]] = []
     # collected_categories = module_data["generate_categorical_values"]
     configured_fields = {field.name: field for field in pipeline_config.fields}

@@ -87,16 +87,10 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
     if not description:
         raise PipelineException("karps: 'description' missing")
 
-    config_gen = backend_export.create_karps_backend_config(
-        config, module_config, name, description, modified_entry_schema, modified_source_order, size
-    )
-
     next(sql_gen)
-    next(config_gen)
 
     def task(entry: Entry | None) -> Entry | None:
         nonlocal sql_gen
-        nonlocal config_gen
         logger.debug("karps entry task")
         try:
             new_entry = entry
@@ -109,11 +103,10 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
         except StopIteration:
             # if this happens, the entries are exhausted
             sql_gen = None
-        try:
-            config_gen.send(entry)
-        except StopIteration:
-            # if this happens, the entries are exhausted
-            config_gen = None
+        if entry is None:
+            backend_export.create_karps_backend_config(
+                config, module_config, name, description, modified_entry_schema, modified_source_order, size
+            )
         return entry
 
     return task

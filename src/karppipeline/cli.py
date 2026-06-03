@@ -1,6 +1,7 @@
 import argparse
 import os
 from pathlib import Path
+import subprocess
 from typing import TYPE_CHECKING
 
 
@@ -229,6 +230,9 @@ def cli():
                     task_output = "Uninstalling "
                 else:
                     task_output = "Unknown action "
+
+                p = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, encoding="utf-8")
+                logger.info(f"karp-pipeline version: commit {p.stdout.strip()}")
 
                 logger.info(task_output + config.resource_id)
             if do_install:

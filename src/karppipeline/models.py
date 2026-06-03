@@ -273,16 +273,22 @@ class PipelineConfig(BaseModel):
         # resolve parents in modules
         resolved = {}
 
-        def recurse(module_name, module):
+        def resolve_inheritance(module_name, module):
             if module_name in resolved:
                 return
 
-            if parent := module.get("parent"):
+            if parent := module.pop("parent", None):
                 if parent in resolved:
                     module.update(resolved[parent])
                 else:
-                    recurse(parent, self.modules[parent])
+                    resolve_inheritance(parent, self.modules[parent])
             resolved[module_name] = module
 
         for module_name, module in self.modules.items():
-            recurse(module_name, module)
+            # resolve inheritance must run on all modules before any mutations to moduels are done
+            resolve_inheritance(module_name, module)
+
+        self.module_types = {}
+        for module_name, module in self.modules.items():
+            # create a dict with instance names -> type, remove type from module settings to avoid having to define it for every module
+            self.module_types[module_name] = module.pop("type", module_name)

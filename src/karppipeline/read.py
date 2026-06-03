@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Iterator, cast
 
 from karppipeline.common import PipelineException
+from karppipeline.execution.dependency import load_importer
 from karppipeline.models import Entry, PipelineConfig
 from karppipeline.util import json
 
@@ -48,12 +49,16 @@ def _find_source_files(pipeline_config: PipelineConfig) -> tuple[list[Path], str
 
 
 def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], Iterator[Entry]]:
-    """
-    When reading CSV data, we know the fields and their order beforehand, but not for JSON
-    (unless hard coded in configuration). We prepare source order here, but it is not usable
-    until after the generators have been consumed, same as size.
-    """
-    input_files, suffix = _find_source_files(pipeline_config)
+    source_type = pipeline_config.import_settings.get("source_type", None)
+    if source_type:
+        instance_name, mod = load_importer(pipeline_config, cast(str, source_type))
+        input_files, suffix = mod(pipeline_config, instance=instance_name)
+    else:
+        input_files, suffix = _find_source_files(pipeline_config)
+
+    # When reading CSV data, we know the fields and their order beforehand, but not for JSON
+    # (unless hard coded in configuration). We prepare source order here, but it is not usable
+    # until after the generators have been consumed, same as size.
 
     # size, array because generator needs mutable object
     size = [0]

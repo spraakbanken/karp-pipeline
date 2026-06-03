@@ -11,6 +11,13 @@ class Dependency:
     optional: bool = False
 
 
+def load_importer(pipeline_config: PipelineConfig, importer: str):
+    resolved_commands, mods = resolve_commands(pipeline_config, [importer], [], cmd_type="import")
+    if len(resolved_commands) > 1:
+        raise PipelineException("Too many importers")
+    return importer, mods[importer].import_
+
+
 def resolve_commands(config: PipelineConfig, subcommand: list[str] | None, defaults: list[str], cmd_type="export"):
     if not subcommand:
         init_invoked_cmds = defaults
@@ -21,8 +28,7 @@ def resolve_commands(config: PipelineConfig, subcommand: list[str] | None, defau
     for cmd in init_invoked_cmds:
         module_type = cmd
         if cmd in config.modules:
-            cmd_config = config.modules[cmd]
-            module_type = cmd_config.get("type") or cmd
+            module_type = config.module_types[cmd]
 
         invoked_cmds.append((cmd, module_type))
 
@@ -38,12 +44,17 @@ def resolve_commands(config: PipelineConfig, subcommand: list[str] | None, defau
                 mod = importlib.import_module("karppipeline.modules." + module_type)
                 mods[cmd] = mod
             except ModuleNotFoundError as e:
-                raise PipelineException(f'Module "{module_type}" not found') from e
-            # only add optional dependencies if they are listed in defaults
+                raise PipelineException(f'Module?? "{module_type}" not found') from e
+            dep_type = None
+            if cmd_type == "install":
+                dep_type = "install_dependencies"
+            elif cmd_type == "export":
+                dep_type = "dependencies"
+            # resolve dependencies if modoule_type, only add optional dependencies if they are listed in defaults
             resolve(
                 [
                     (dep.name, dep.name)  # dependencies cannot have multiple instances
-                    for dep in getattr(mod, f"{'install_' if cmd_type == 'install' else ''}dependencies", [])
+                    for dep in (getattr(mod, dep_type, []) if dep_type else [])
                     if not dep.optional or dep.name in defaults
                 ]
             )

@@ -231,7 +231,15 @@ def cli():
                 else:
                     task_output = "Unknown action "
 
-                p = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, encoding="utf-8")
+                # by using a reference to this file, find the root dir, first parent is karppipeline, second src dir, third root dir
+                pipeline_code_dir = Path(__file__).resolve().parent.parent.parent
+
+                p = subprocess.run(
+                    ["git", "rev-parse", "--short", "HEAD"],
+                    capture_output=True,
+                    encoding="utf-8",
+                    cwd=pipeline_code_dir,
+                )
                 logger.info(f"karp-pipeline version: commit {p.stdout.strip()}")
 
                 logger.info(task_output + config.resource_id)

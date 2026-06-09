@@ -44,7 +44,7 @@ def resolve_commands(config: PipelineConfig, subcommand: list[str] | None, defau
                 mod = importlib.import_module("karppipeline.modules." + module_type)
                 mods[cmd] = mod
             except ModuleNotFoundError as e:
-                raise PipelineException(f'Module?? "{module_type}" not found') from e
+                raise PipelineException(f'Module "{module_type}" not found') from e
             dep_type = None
             if cmd_type == "install":
                 dep_type = "install_dependencies"

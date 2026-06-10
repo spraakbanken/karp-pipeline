@@ -2,22 +2,12 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from karppipeline.models import MultiLang
+from karppipeline.modules.karps.namespace import add_namespace_to_field, add_namespace_to_fields
 
 
 class Tag(BaseModel):
     label: MultiLang
     description: MultiLang
-
-
-class FieldMetadata(BaseModel):
-    """
-    Used to populate translations and value fields in the Karps backend configs
-    """
-
-    name: MultiLang
-    description: MultiLang | None = None
-    # values are used by enums to validate that the given values are in the set and also for translation
-    values: dict[str, MultiLang] = {}
 
 
 class EntryWord(BaseModel):
@@ -52,3 +42,31 @@ class KarpsInstallConfig(KarpsExportConfig):
     config_host: str | None = None
     db_database: str
     db_host: str | None = None
+
+
+def get_export_config(config, instance):
+    if instance in ["karps_config", "karps_data"]:
+        # this module only uses the karps config and does not have it's own config
+        instance = "karps"
+
+    # TODO what if run karps-21 is run, how will the submodules know which instance to use??
+    # TODO what if run karps_config, how will the submodule know which instance to use??
+    # probably the modules need to be linked more and devise a way to use the submodules with instance settings
+
+    # run karps_config
+
+    module_config = KarpsExportConfig.model_validate(config.modules[instance])
+    if config.protected_metadata:
+        # update entry_word, primary and secondary
+        module_config.entry_word.field = add_namespace_to_field(config.resource_id, module_config.entry_word.field)
+        module_config.primary = add_namespace_to_fields(config.resource_id, module_config.primary)
+        module_config.secondary = add_namespace_to_fields(config.resource_id, module_config.secondary)
+    return module_config
+
+
+def get_install_config(config, instance):
+    if instance in ["karps_config", "karps_data"]:
+        # this module only uses the karps config and does not have it's own config
+        instance = "karps"
+
+    return KarpsInstallConfig.model_validate(config.modules[instance])

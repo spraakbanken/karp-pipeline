@@ -275,13 +275,21 @@ class PipelineConfig(BaseModel):
         # resolve parents in modules
         resolved = {}
 
+        def _merge(source, target):
+            for key, val in source.items():
+                if key not in target:
+                    target[key] = val
+                else:
+                    if isinstance(val, dict):
+                        target[key] = _merge(val, target[key])
+
         def resolve_inheritance(module_name, module):
             if module_name in resolved:
                 return
 
             if parent := module.pop("parent", None):
                 if parent in resolved:
-                    module.update(resolved[parent])
+                    _merge(resolved[parent], module)
                 elif parent in self.modules:
                     resolve_inheritance(parent, self.modules[parent])
                 else:

@@ -1,29 +1,15 @@
 from pathlib import Path
 import shlex
 import shutil
-import subprocess
 
-from karppipeline.common import get_output_dir, PipelineException
+
+from karppipeline.common import get_output_dir
 from karppipeline.logging import get_logger
-from karppipeline.modules.karps.models import KarpsInstallConfig
 from karppipeline.models import PipelineConfig
+from karppipeline.modules.karps.models import KarpsInstallConfig
+from karppipeline.util.subprocess import run_subprocess
 
 logger = get_logger(__name__, "Karp-s installer")
-
-
-def _run_subprocess(cmd: str | list[str], err_msg=None, check=True, shell=False, print_output=True) -> int:
-    logger.debug(f"Running subprocess: {cmd}")
-    p = subprocess.run(cmd, check=False, capture_output=True, shell=shell, encoding="utf-8")
-    out = p.stdout
-    err = p.stderr
-    if print_output:
-        if out:
-            logger.debug(out)
-        if err:
-            logger.error(err)
-    if check and p.returncode:
-        raise PipelineException(err_msg)
-    return p.returncode
 
 
 def _rm_files_and_replace_parent(dir_to_replace: Path, files_to_remove: list[Path], host=None):
@@ -42,43 +28,11 @@ def _rm_files_and_replace_parent(dir_to_replace: Path, files_to_remove: list[Pat
         resource_dir_str = str(dir_to_replace)
         cmds.append(f"rmdir -- {resource_dir_str} 2>/dev/null")
         cmds.append(f"mkdir {resource_dir_str}")
-        _run_subprocess(
+        run_subprocess(
             f"ssh {shlex.quote(host)} {shlex.quote(f'{"; ".join(cmds)}')}",
             err_msg=f"Unable to create resource directory on host {host}",
             shell=True,
         )
-
-
-def remove_from_db(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig):
-    _run_db(pipeline_config, karps_config, "delete.sql")
-
-
-def add_to_db(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig):
-    _run_db(pipeline_config, karps_config, "create.sql")
-
-
-def _run_db(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig, sql_file):
-    """
-    if karps.db_host is set, ssh + mysql will be used, else only mysql
-    """
-    host = karps_config.db_host
-    db_name = karps_config.db_database
-
-    sqlfile = get_output_dir(pipeline_config.workdir) / "karps" / sql_file
-    if host:
-        host_logging = f", on host {host}"
-    else:
-        host_logging = ""
-    logger.info("Running MySQL database: %s, source: %s%s", db_name, sqlfile, host_logging)
-    if not host:
-        cmd = f"mysql {shlex.quote(db_name)}"
-    else:
-        cmd = f"ssh {shlex.quote(host)} {shlex.quote(f'mysql {db_name}')}"
-    _run_subprocess(
-        f"cat {shlex.quote(str(sqlfile))} | {cmd}",
-        shell=True,
-        err_msg="Unable to run database file for Karp-s install/uninstall",
-    )
 
 
 def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig, resource_id: str):
@@ -95,7 +49,7 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig
         karps_config_dir.mkdir(exist_ok=True)
     else:
         cmd = f'ssh {shlex.quote(host)} "mkdir -p {karps_config_dir}"'
-        _run_subprocess(
+        run_subprocess(
             cmd,
             shell=True,
             err_msg=f"Unable to create output directory on host {host}",
@@ -122,7 +76,7 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig
         if not host:
             shutil.copy(source, target)
         else:
-            _run_subprocess(
+            run_subprocess(
                 ["scp", str(source), f"{host}:{str(target)}"],
                 err_msg=f"Unable to copy file to host {host}",
             )
@@ -132,14 +86,14 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig
     if host:
         cmd = f'ssh {shlex.quote(host)} "{cmd}"'
     logger.info("Calling karp-s-cli to add configuration.")
-    _run_subprocess(cmd, shell=True, err_msg="karp-s-cli error")
+    run_subprocess(cmd, shell=True, err_msg="karp-s-cli error")
 
     # try to reload the Karp-s backend (ok to fail, so don't print output from command and only write a warning)
     cmd = f"{karps_config.cli_path} reload"
     if host:
         cmd = f'ssh {shlex.quote(host)} "{cmd}"'
     logger.info("Calling karp-s-cli to reload configuration.")
-    return_code = _run_subprocess(cmd, check=False, shell=True, print_output=False)
+    return_code = run_subprocess(cmd, check=False, shell=True, print_output=False)
     if return_code:
         logger.warning("karp-s-backend may not have loaded the new resource")
     else:
@@ -154,7 +108,7 @@ def remove_config(karps_config: KarpsInstallConfig, resource_id: str):
         cmd = f'ssh {shlex.quote(host)} "{cmd}"'
 
     logger.info(f"Calling karp-s-cli to remove configuration for {resource_id}.")
-    return_code = _run_subprocess(cmd, check=False, shell=True, print_output=False)
+    return_code = run_subprocess(cmd, check=False, shell=True, print_output=False)
     if return_code:
         logger.error("karp-s-backend may not have removed the resource.")
     else:

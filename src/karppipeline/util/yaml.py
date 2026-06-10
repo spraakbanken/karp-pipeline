@@ -1,3 +1,4 @@
+from typing import TextIO
 import yaml
 from karppipeline.common import Map
 
@@ -10,7 +11,7 @@ class IndentDumper(yaml.SafeDumper):
         return super().increase_indent(flow)
 
 
-def dump(obj: object, fp, indent: int = 2):
+def dump(obj: object, fp: TextIO, indent: int = 2):
     out = dumps(obj, indent)
     fp.write(out)
 

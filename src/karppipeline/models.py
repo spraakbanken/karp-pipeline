@@ -15,6 +15,8 @@ from pydantic import (
     model_validator,
 )
 
+from karppipeline.common import PipelineException
+
 
 type Entry = Mapping[str, object]
 type EntrySchema = dict[str, InferredField]
@@ -280,8 +282,10 @@ class PipelineConfig(BaseModel):
             if parent := module.pop("parent", None):
                 if parent in resolved:
                     module.update(resolved[parent])
-                else:
+                elif parent in self.modules:
                     resolve_inheritance(parent, self.modules[parent])
+                else:
+                    raise PipelineException(f"Module parent for {module_name}: {parent} not found")
             resolved[module_name] = module
 
         for module_name, module in self.modules.items():

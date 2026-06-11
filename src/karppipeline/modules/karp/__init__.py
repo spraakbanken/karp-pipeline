@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path
+import shlex
 import subprocess
 from typing import Final
+from typing import NotRequired, TypedDict
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.execution.dependency import Dependency
 from karppipeline.models import EntrySchema, PipelineConfig
@@ -26,6 +28,7 @@ MODULE_NAME: Final[str] = "karp"
 class KarpRedConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    cli_host: str | None = None
     cli_path: Path
     cli_working_dir: Path
     api_key: str | None = None
@@ -66,9 +69,10 @@ def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
     _karp_cli_runner(karp_red_config, ["resource", "create", str(config_file)])
     # adding entries
     data_file = get_output_dir(config.workdir) / f"{config.resource_id}.jsonl"
-    _karp_cli_runner(karp_red_config, ["entries", "add", config.resource_id, str(data_file)])
+    quoted_resource_id = shlex.quote(config.resource_id)
+    _karp_cli_runner(karp_red_config, ["entries", "add", quoted_resource_id, shlex.quote(str(data_file))])
     # publish the resource
-    _karp_cli_runner(karp_red_config, ["resource", "publish", config.resource_id])
+    _karp_cli_runner(karp_red_config, ["resource", "publish", quoted_resource_id])
 
 
 def import_(pipeline_config: PipelineConfig, instance=MODULE_NAME):
@@ -85,34 +89,75 @@ def import_(pipeline_config: PipelineConfig, instance=MODULE_NAME):
         logger.info(f"Found {output_dir / 'import.jsonl'}")
     else:
         logger.info("Fetching data from Karp red")
-        _karp_cli_runner(
-            karp_red_config,
-            [
-                "entries",
-                "export",
-                pipeline_config.resource_id,
-                "--entry-only",
-                "-o",
-                karp_red_output,
-            ],
-        )
+        _karp_cli_entries_export(karp_red_config, pipeline_config.resource_id, karp_red_output)
 
     source_files = (karp_red_output,)
     suffix = "jsonl"
     return source_files, suffix
 
 
-def _karp_cli_runner(config: KarpRedConfig, cmds):
-    karp_cli = config.cli_path
-    cwd = config.cli_working_dir
-    try:
-        result = subprocess.run(
-            [karp_cli, *cmds],
+class RunKwargs(TypedDict):
+    cwd: NotRequired[Path]
+
+
+def _karp_cli_entries_export(config: KarpRedConfig, resource_id: str, final_output_file: Path):
+    quoted_host = ""
+    if config.cli_host:
+        quoted_host = shlex.quote(config.cli_host)
+        # make tmp file, has to end with jsonl for karp-cli to generate JSONL and not JSON
+        output_file = subprocess.run(
+            ["ssh", "--", quoted_host, "mktemp", "/tmp/tmp.XXXXXX.jsonl"],
             check=True,
             capture_output=True,
             text=True,
-            cwd=cwd,
-        )
+        ).stdout.strip()
+    else:
+        output_file = str(final_output_file)
+
+    # call Karp CLI
+    _karp_cli_runner(
+        config,
+        [
+            "entries",
+            "export",
+            shlex.quote(resource_id),
+            "--entry-only",
+            "-o",
+            output_file,
+        ],
+    )
+
+    if config.cli_host:
+        # get tmp file
+        data = subprocess.run(
+            ["ssh", "--", quoted_host, f"cat {output_file}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        with open(final_output_file, "w") as fp:
+            fp.write(data)
+
+        # remove tmp file
+        subprocess.run(["ssh", "--", quoted_host, f"rm -f -- {shlex.quote(output_file)}"])
+
+
+def _karp_cli_runner(config: KarpRedConfig, karp_args):
+    """
+    Run karp-cli on the configured host. Quote args before passing to this function
+    """
+    karp_cli = config.cli_path
+    cwd = config.cli_working_dir
+
+    args = [str(karp_cli), *karp_args]
+
+    kwargs: RunKwargs = {}
+    if config.cli_host:
+        args = ["ssh", "--", shlex.quote(config.cli_host), " ".join(["cd", shlex.quote(str(cwd)), "&&"] + args)]
+    else:
+        kwargs = {"cwd": cwd}
+    try:
+        result = subprocess.run(args, check=True, capture_output=True, text=True, **kwargs)
         logger.info(f"karp(-red)-cli stdout: {result.stdout.strip()}")
         if result.stderr:
             logger.info(f"karp(-red)-cli stderr: {result.stderr.strip()}")

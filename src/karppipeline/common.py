@@ -1,6 +1,7 @@
 from pathlib import Path
+from typing import Any
 
-type Map = dict[str, object]
+type Map = dict[str, Any]
 
 
 class PipelineException(Exception):

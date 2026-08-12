@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, BinaryIO
 import orjson
 
 from pydantic import BaseModel
@@ -19,8 +19,13 @@ def dumps(obj: object, pretty=False) -> str:
     return orjson.dumps(obj, default=custom_serializer, **kwargs).decode()
 
 
-def loads(str: str) -> Map:
-    return orjson.loads(str)
+def load(fp: BinaryIO) -> Map:
+    data = fp.read()
+    return loads(data)
+
+
+def loads(data: str | bytes) -> Map:
+    return orjson.loads(data)
 
 
 def load_array(data: bytes) -> list[Any]:

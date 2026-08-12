@@ -24,7 +24,7 @@ class ConfigHandle:
     warnings: list[str] = field(default_factory=list)
 
 
-def load_config(config_handle, ignore_validation=False) -> PipelineConfig:
+def load_config(config_handle: ConfigHandle, ignore_validation=False) -> PipelineConfig:
     config_dict = config_handle.config_dict
     config_dict["workdir"] = config_handle.workdir
     if ignore_validation:

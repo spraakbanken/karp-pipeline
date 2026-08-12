@@ -12,11 +12,12 @@ def custom_serializer(obj: object) -> object:
     raise TypeError(f"Type {type(obj)} not serializable")
 
 
+def dump(obj: object, fp: BinaryIO, pretty=False):
+    fp.write(_dumps(obj, pretty=pretty))
+
+
 def dumps(obj: object, pretty=False) -> str:
-    kwargs = {}
-    if pretty:
-        kwargs["option"] = orjson.OPT_INDENT_2
-    return orjson.dumps(obj, default=custom_serializer, **kwargs).decode()
+    return _dumps(obj, pretty).decode()
 
 
 def load(fp: BinaryIO) -> Map:
@@ -30,3 +31,10 @@ def loads(data: str | bytes) -> Map:
 
 def load_array(data: bytes) -> list[Any]:
     return orjson.loads(data)
+
+
+def _dumps(obj: object, pretty=False) -> bytes:
+    kwargs = {}
+    if pretty:
+        kwargs["option"] = orjson.OPT_INDENT_2
+    return orjson.dumps(obj, default=custom_serializer, **kwargs)

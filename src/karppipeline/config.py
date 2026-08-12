@@ -67,6 +67,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
     warnings = []
     start_path = Path(os.getcwd())
     config = read_config(start_path)
+
     if not config:
         raise PipelineException(f"config: could not find a config in {start_path}")
 

@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any, Iterator, cast
 
-from yaml import YAMLError
+from yaml import MarkedYAMLError, YAMLError
 from karppipeline.common import PipelineException, Map
 from karppipeline.models import PipelineConfig
 from karppipeline.util import yaml
@@ -58,6 +58,8 @@ def _find_configs() -> Iterator[ConfigHandle]:
                 logger.info(f"Reading {config_path}")
                 try:
                     return yaml.load(fp)
+                except MarkedYAMLError as e:
+                    raise PipelineException(f"Could not parse YAML: {e.problem}{e.problem_mark}")
                 except YAMLError:
                     raise PipelineException(f"Could not parse YAML, check file: {config_path}")
         return None

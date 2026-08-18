@@ -1,10 +1,10 @@
 import argparse
 import os
 from pathlib import Path
-import subprocess
 from typing import TYPE_CHECKING
 
 
+from karppipeline.util.logging import log_latest_commit_id
 from karppipeline.util.terminal import bold, green_box, red_box
 
 
@@ -177,6 +177,7 @@ def cli():
     import karppipeline.logging as karps_logging
     from karppipeline.common import PipelineException
 
+    # again, to this after parse_args to to avoid latency in --help
     logger = logging.getLogger(__name__)
     try:
         configs = find_configs()
@@ -231,16 +232,7 @@ def cli():
                 else:
                     task_output = "Unknown action "
 
-                # by using a reference to this file, find the root dir, first parent is karppipeline, second src dir, third root dir
-                pipeline_code_dir = Path(__file__).resolve().parent.parent.parent
-
-                p = subprocess.run(
-                    ["git", "rev-parse", "--short", "HEAD"],
-                    capture_output=True,
-                    encoding="utf-8",
-                    cwd=pipeline_code_dir,
-                )
-                logger.info(f"karp-pipeline version: commit {p.stdout.strip()}")
+                log_latest_commit_id(logger)
 
                 logger.info(task_output + config.resource_id)
             if do_install:

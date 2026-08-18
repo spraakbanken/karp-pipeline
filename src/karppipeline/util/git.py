@@ -5,7 +5,7 @@ class GitRepo:
     def __init__(self, repo_path):
         self.repo_path = repo_path
 
-    def _run(self, *args):
+    def _run(self, *args, check=True):
         result = subprocess.run(
             ["git", *args],
             cwd=self.repo_path,
@@ -17,6 +17,8 @@ class GitRepo:
         if result.returncode != 0:
             if "nothing to commit" not in result.stdout:
                 raise RuntimeError("Error when calling Git", result.stdout + ", " + result.stderr)
+
+        return result
 
     def init(self):
         self._run("init")
@@ -31,3 +33,10 @@ class GitRepo:
         if allow_empty:
             commit_args.append("--allow-empty")
         self._run("commit", *commit_args, "--message", msg)
+
+    def latest_commit(self) -> str | None:
+        p = self._run("rev-parse", "--short", "HEAD", check=False)
+        if p.returncode != 0:
+            return None
+        else:
+            return p.stdout.strip()

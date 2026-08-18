@@ -144,6 +144,13 @@ and settings from the pipeline configuration.
 configuration files to the Karp sök configuration folder and calls `karp-s-cli add <resource>` which will integrate the configuration and make sure the backend sees the
 new resource.
 
+### mink
+
+**Export** does nothing
+
+**Install** Uses [SBX Mink](https://spraakbanken.gu.se/en/tools/mink) API to create a resource and install it in Karp sök through Mink. This
+is useful for external users of Mink/Karp sök who want to have a CLI option to the interface.
+
 ## Multiple instances of installers
 
 Installers may be configured many times and used by instance name rather than module name.

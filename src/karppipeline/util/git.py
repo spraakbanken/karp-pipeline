@@ -1,24 +1,29 @@
 import subprocess
 
+from karppipeline.execution.install import DRY_RUN
+
 
 class GitRepo:
     def __init__(self, repo_path):
         self.repo_path = repo_path
 
-    def _run(self, *args, check=True):
-        result = subprocess.run(
-            ["git", *args],
-            cwd=self.repo_path,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+    def _run(self, *args, modifying=True):
+        if not DRY_RUN or not modifying:
+            result = subprocess.run(
+                ["git", *args],
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
 
-        if result.returncode != 0:
-            if "nothing to commit" not in result.stdout:
-                raise RuntimeError("Error when calling Git", result.stdout + ", " + result.stderr)
+            if result.returncode != 0:
+                if "nothing to commit" not in result.stdout:
+                    raise RuntimeError("Error when calling Git", result.stdout + ", " + result.stderr)
 
-        return result
+            return result.returncode, result.stdout.strip()
+        else:
+            return 0, ""
 
     def init(self):
         self._run("init")
@@ -35,8 +40,8 @@ class GitRepo:
         self._run("commit", *commit_args, "--message", msg)
 
     def latest_commit(self) -> str | None:
-        p = self._run("rev-parse", "--short", "HEAD", check=False)
-        if p.returncode != 0:
+        returncode, stdout = self._run("rev-parse", "--short", "HEAD", modifying=False)
+        if returncode != 0:
             return None
         else:
-            return p.stdout.strip()
+            return stdout

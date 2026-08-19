@@ -100,6 +100,7 @@ def install(pipeline_config: PipelineConfig, uninstall=False, instance=MODULE_NA
     2. Run the SQL file in the configured database.
     """
     karps_config = get_install_config(pipeline_config, instance)
+    logger.info(f"Installing/uninstalling in Karp-s instance with name: '{instance}'")
     if not uninstall:
         backend_install.add_config(pipeline_config, karps_config, pipeline_config.resource_id)
     else:

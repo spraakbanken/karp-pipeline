@@ -100,6 +100,9 @@ Each (exporter) module adds its data to a subfolder in `output/`.
 
 Modules also have a dependency system. For example, `jsonl` declares `dependencies = [Dependency("schema")]`.
 
+Pipeline modules that have an install function should use `karppipeline.execution.install.DRY_RUN` to check whether modifications are allowed.
+Python modules in `karppipeline.utils` should respect the flag. The flag is set in the CLI using `--dry-run`/`-n`.
+
 ### schema
 
 Only an exporter. Used internally for everything related to the `export.fields` settings

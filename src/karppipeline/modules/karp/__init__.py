@@ -7,7 +7,7 @@ from typing import NotRequired, TypedDict
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.execution.dependency import Dependency
 from karppipeline.models import EntrySchema, PipelineConfig
-from karppipeline.util import yaml
+from karppipeline.util import subprocess as internal_subprocess, yaml
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -156,12 +156,5 @@ def _karp_cli_runner(config: KarpRedConfig, karp_args):
         args = ["ssh", "--", shlex.quote(config.cli_host), " ".join(["cd", shlex.quote(str(cwd)), "&&"] + args)]
     else:
         kwargs = {"cwd": cwd}
-    try:
-        result = subprocess.run(args, check=True, capture_output=True, text=True, **kwargs)
-        logger.info(f"karp(-red)-cli stdout: {result.stdout.strip()}")
-        if result.stderr:
-            logger.info(f"karp(-red)-cli stderr: {result.stderr.strip()}")
-    except subprocess.CalledProcessError as e:
-        logger.error(e.stdout)
-        logger.error(e.stderr)
-        raise
+
+    internal_subprocess.run_subprocess(args, check=True, **kwargs)

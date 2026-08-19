@@ -1,12 +1,12 @@
 from pathlib import Path
 import logging
-import subprocess
 
 from pydantic import BaseModel
 
 from karppipeline.common import PipelineException, get_output_dir
 from karppipeline.execution.dependency import Dependency
 from karppipeline.models import PipelineConfig
+from karppipeline.util import fileops
 
 """
 export: does nothing
@@ -52,9 +52,4 @@ def _upload_data(pipeline_config: PipelineConfig, data_upload_config: DataUpload
     data_dir = data_upload_config.data_dir
     output_dir = get_output_dir(pipeline_config.workdir)
     file = output_dir / f"{pipeline_config.resource_id}.jsonl"
-    if host:
-        logger.info(f"Uploading output to host {host}, directory: {data_dir}")
-        subprocess.check_call(["rsync", str(file), f"{host}:{data_dir}"])
-    else:
-        logger.info(f"Copying output to directory: {data_dir}")
-        subprocess.check_call(["cp", str(file), data_dir])
+    fileops.copy(file, data_dir, host=host)

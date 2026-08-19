@@ -1,10 +1,9 @@
 import logging
 from pathlib import Path
-import shutil
-
 from karppipeline.models import PipelineConfig
 from karppipeline.modules.sbxrepo.models import SBXRepoConfig
 
+from karppipeline.util import fileops
 from karppipeline.util.git import GitRepo
 from karppipeline.modules.sbxrepo.common import _get_metadata_file
 
@@ -23,5 +22,5 @@ def _install_metadata_file(pipeline_config: PipelineConfig, sbmetadata_config: S
     repo.pull()
 
     main_dir = Path(yaml_path)
-    shutil.copy(metadata_yaml, main_dir / "yaml/lexicon" / f"{resource_id}.yaml")
+    fileops.copy(metadata_yaml, main_dir / "yaml/lexicon" / f"{resource_id}.yaml")
     repo.commit_all(msg=f"add {pipeline_config.resource_id}", allow_empty=False)

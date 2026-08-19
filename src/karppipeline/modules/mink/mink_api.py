@@ -6,6 +6,7 @@ import urllib.request
 import urllib.parse
 import uuid
 from karppipeline.common import PipelineException
+from karppipeline.execution.install import DRY_RUN
 import karppipeline.util.json as json
 
 logger = logging.getLogger(__name__)
@@ -41,8 +42,12 @@ class MinkAPI:
         request = urllib.request.Request(BASE_URL + "/" + path, headers=headers, method=method, data=data)
 
         try:
-            with urllib.request.urlopen(request) as resp:
-                body = resp.read().decode("utf-8")
+            if not DRY_RUN or method == "GET":
+                # allow GET requets even though DRY_RUN is set
+                with urllib.request.urlopen(request) as resp:
+                    body = resp.read().decode("utf-8")
+            else:
+                body = '{"status":"success","resource_id":"<PLACEHOLDER>"}'
         except HTTPError as e:
             body = e.read().decode("utf-8")
             if check:

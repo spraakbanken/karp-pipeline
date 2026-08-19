@@ -139,6 +139,15 @@ def parse_args() -> argparse.Namespace:
             help="Modules to invoke (default is to run modules resource config export.default/install)",
         )
 
+    def add_dry_run_param(p: argparse.ArgumentParser):
+        p.add_argument(
+            "-n",
+            "--dry-run",
+            help="Call install, but skip modyfing calls. See each module for more information.",
+            action="store_true",
+            default=False,
+        )
+
     p_run = subparsers.add_parser(
         "run",
         description=f"Prepares the material from /source and places the resulting artifacts in {bold('/output')}. Does not have any side effects except creating files.",
@@ -154,6 +163,7 @@ def parse_args() -> argparse.Namespace:
     )
     add_modules(p_install)
     add_output_params(p_install)
+    add_dry_run_param(p_install)
 
     p_uninstall = subparsers.add_parser(
         "uninstall",
@@ -162,6 +172,7 @@ def parse_args() -> argparse.Namespace:
     )
     add_modules(p_uninstall)
     add_output_params(p_uninstall)
+    add_dry_run_param(p_uninstall)
 
     return parser.parse_args()
 
@@ -204,6 +215,8 @@ def cli():
     kwargs = {}
     if len(args.modules) > 0:
         kwargs["subcommand"] = args.modules
+    if do_install or do_uninstall:
+        kwargs["dry_run"] = args.dry_run
 
     compact_output = False
     if args.compact_output == "default":

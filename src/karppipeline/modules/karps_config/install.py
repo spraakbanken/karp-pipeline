@@ -1,12 +1,12 @@
 from pathlib import Path
 import shlex
-import shutil
 
 
 from karppipeline.common import get_output_dir
 from karppipeline.logging import get_logger
 from karppipeline.models import PipelineConfig
 from karppipeline.modules.karps.models import KarpsInstallConfig
+from karppipeline.util import fileops
 from karppipeline.util.subprocess import run_subprocess
 
 logger = get_logger(__name__, "Karp-s installer")
@@ -17,10 +17,9 @@ def _rm_files_and_replace_parent(dir_to_replace: Path, files_to_remove: list[Pat
     Removes the given files and then the given dir if it is empty
     """
     if not host:
-        for file_to_remove in files_to_remove:
-            file_to_remove.unlink(missing_ok=True)
+        fileops.remove(files_to_remove)
         if not dir_to_replace.exists():
-            dir_to_replace.mkdir()
+            fileops.mkdir(dir_to_replace)
     else:
         cmds = []
         for file_to_remove in files_to_remove:
@@ -45,15 +44,7 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig
     karps_config_dir = Path(karps_config.output_config_dir)
 
     # ensure that the karps incoming config directory exists
-    if not host:
-        karps_config_dir.mkdir(exist_ok=True)
-    else:
-        cmd = f'ssh {shlex.quote(host)} "mkdir -p {karps_config_dir}"'
-        run_subprocess(
-            cmd,
-            shell=True,
-            err_msg=f"Unable to create output directory on host {host}",
-        )
+    fileops.mkdir(karps_config_dir, host=host)
 
     resource_dir = karps_config_dir / resource_id
     resource_file_path = resource_dir / "resource.yaml"
@@ -73,13 +64,7 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig
         (fields_config, resource_fields_file_path),
         (global_config, resource_global_file_path),
     ]:
-        if not host:
-            shutil.copy(source, target)
-        else:
-            run_subprocess(
-                ["scp", str(source), f"{host}:{str(target)}"],
-                err_msg=f"Unable to copy file to host {host}",
-            )
+        fileops.copy(source, target, host=host)
 
     # run the backend cli to process the added files
     cmd = f"{karps_config.cli_path} add {resource_id}"

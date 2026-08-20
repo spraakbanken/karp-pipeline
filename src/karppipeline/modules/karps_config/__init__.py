@@ -28,11 +28,13 @@ dependencies = [
 ]
 
 
+
 def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> Callable[[Entry | None], Entry | None]:
     """
     Create configuration for Karp-s backend
     """
-    entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
+    input_entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
+    entry_schema = backend_export.flatten_entry_schema(input_entry_schema)
     source_order: list[str] = module_data["schema"]["source_order"]
     size: int = module_data["schema"]["size"]
 

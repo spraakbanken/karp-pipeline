@@ -83,7 +83,7 @@ class InferredField:
     collection: bool = False
     categorical: InitVar[bool] = False
 
-    # if type==table
+    # object can have inner fields
     fields: dict[str, Self] = field(default_factory=dict)
 
     extra: dict[str, object] = field(default_factory=dict)
@@ -140,6 +140,7 @@ class FieldTypeEnum(str, Enum):
     integer = "integer"
     float = "float"
     bool = "bool"
+    object = "object"
 
 
 class ConfiguredField(BaseModel):
@@ -148,8 +149,8 @@ class ConfiguredField(BaseModel):
     name: str
     type: FieldTypeEnum
     collection: bool = False
-    fields: dict[str, Self] = Field(default_factory=dict)
-    label: NonEmptyMultiLang
+    fields: list[Self] = Field(default_factory=list)
+    label: NonEmptyMultiLang | None = None
     categorical: bool = False
     categories: list[str] = Field(default_factory=list)
     category_labels: dict[str, NonEmptyMultiLang] = Field(default_factory=dict)
@@ -158,15 +159,9 @@ class ConfiguredField(BaseModel):
     def validate_fields_rules(self):
         if self.categories:
             self.categorical = True
-
-        if not self.collection and self.fields:
-            raise ValueError("fields is only allowed when collection=True")
-
-        for child in self.fields.values():
-            if child.collection:
-                raise ValueError("inner field may not be collection")
-            if child.fields:
-                raise ValueError("inner field may only be nested one level deep")
+        
+        if self.label is None and self.type != FieldTypeEnum.object:
+            raise PipelineException("Label must be configured for each field (unless type is object)")
 
         return self
 

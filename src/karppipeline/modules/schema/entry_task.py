@@ -54,7 +54,11 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
         entry_schema.clear()
     for field in converted_fields:
         if field.exclude:
-            entry_schema.pop(field.name, None)
+            tmp: EntrySchema = entry_schema
+            parts = field.name.split(".")
+            for part in parts[:-1]:
+                tmp = tmp[part].fields
+            tmp.pop(parts[-1], None)
         else:
             if field.name == "*":
                 # the converter must set the schema, placeholder value
@@ -92,12 +96,19 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
         if not entry:
             return None
         logger.debug("schema entry task")
-        new_entry = {}
 
-        # initialize data
-        for key in entry_schema.keys():
-            if key in entry:
-                new_entry[key] = entry[key]
+        def init(entry_schema, entry) -> Entry:
+            new_entry = {}
+            for key in entry_schema.keys():
+                if key in entry:
+                    if entry_schema[key].type == "object":
+                        asdf = init(entry_schema[key].fields, entry[key])
+                    else:
+                        asdf = entry[key]
+                    new_entry[key] = asdf
+            return new_entry
+
+        new_entry = init(entry_schema, entry)
 
         # convert or rename fields
         for field in converted_fields:
@@ -115,7 +126,7 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
                         val = new_entry[field.name]
                     elif field.name in entry:
                         val = entry[field.name]
-                    if val:
+                    if val is not None:
                         new_entry[field.target] = _convert_value(field.converter, val)
 
         for key in entry_schema.keys():

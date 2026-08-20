@@ -23,7 +23,7 @@ MODULE_NAME: Final[str] = "karps"
 
 dependencies = [
     Dependency("karps_config"),
-    Dependency("jsonl"),
+    Dependency("flatter_jsonl"),
     Dependency("generate_categorical_values"),
 ]
 

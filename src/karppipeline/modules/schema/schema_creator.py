@@ -49,53 +49,44 @@ def _check_or_create_field(pipeline_config: PipelineConfig, schema, key, values)
     if not isinstance(values, list):
         values = (values,)
     elif field and not field.collection:
-        raise PipelineException(f'Mismatch, field: "{key}"')
+        raise PipelineException(f'Mismatch, field: "{key}". Pipeline does not except a collection.')
     else:
         collection = True
     for value in values:
         if not isinstance(value, dict):
-            # scalar value
-            value = ((key, value, field),)
-        elif not collection or (field and not field.type == "table"):
-            # if the value is a dict, it must be in a collection and if field has been set previously
-            # it must have type == table
-            raise PipelineException(f'Mismatch, field: "{key}"')
-        else:
-            # type == table, find sub fields
-            # sub-fields do not have collection: true although they could be seen as such...
-            collection = False
-            if not field:
-                # first time this table field is found
-                fields = {}
-                field = InferredField(type="table", collection=True, name=key, fields=fields)
-                schema[key] = field
-
-            # use fields from the parent field as schema, will add sub-fields to the correct level
-            schema = field.fields
-            value = [(key, val, schema.get(key)) for (key, val) in value.items()]
-
-        for inner_key, inner_value, inner_field in value:
-            # at this point, inner_value must be scalar otherwise the source file's entry schema is not supported
-            if inner_value is None:
+            if value is None:
                 break
-            if isinstance(inner_value, list) or isinstance(inner_value, dict):
+            if isinstance(value, list):
+                # at this point, inner_value must be scalar otherwise the source file's entry schema is not supported
+                # TODO allow it...
                 raise PipelineException("Level of nesting not allowed.")
-            if inner_field:
-                _check_type(inner_key, inner_field, inner_value)
+            if field:
+                _check_type(key, field, value)
 
             else:
                 # not previously seen field, initializes type and name
-                conf_field = pipeline_config.get_field(inner_key)
+                conf_field = pipeline_config.get_field(key)
                 categorical = False
                 if conf_field:
                     categorical = conf_field.categorical
-                inner_field = InferredField(
-                    type=type_lookup[type(inner_value)], name=inner_key, collection=collection, categorical=categorical
+                field = InferredField(
+                    type=type_lookup[type(value)], name=key, collection=collection, categorical=categorical
                 )
-                schema[inner_key] = inner_field
+                schema[key] = field
 
-            if inner_field and inner_field.type == "text":
-                _add_max_length(inner_field, inner_value)
+            if field and field.type == "text":
+                _add_max_length(field, value)
+
+        else:
+            if not field:
+                # first time this table field is found
+                fields = {}
+                field = InferredField(type="object", collection=collection, name=key, fields=fields)
+                schema[key] = field
+
+            for inner_key, val in value.items():
+                # use fields from the object field as schema, will add sub-fields to the correct level
+                _check_or_create_field(pipeline_config, schema[key].fields, inner_key, val)
 
 
 def _check_type(key: str, field: InferredField, value: str | float | int | bool) -> None:

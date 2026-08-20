@@ -12,14 +12,53 @@ from karppipeline.util import json
 logger = logging.getLogger(__name__)
 
 
-def _update_json_source_order(source_order: list[str], new_keys: list[str]) -> list[str]:
+def _update_json_source_order(source_order: list[tuple[str, list]], entry: Entry) -> None:
+    # maybe source order should be an ordered dict here
+
     """
-    Tries to merge two lists so that the order of original list is preserved, while new
-    elements are added in between in appropriate places. If the order is conflicting
-    we don't really care what happens, order should be hard coded in cofig for those cases.
+    Tries to merge the structure in source order with the structure of entry
+    # so that the order of source_order preserved, while new elements are added in between in
+    # appropriate places. If the order is conflicting we don't really care what happens,
+    # order should be hard coded in config for those cases.
     """
+    new_keys = []
+    for key in entry.keys():
+        for name, inner in source_order:
+            if name == key:
+                inner_source_order = inner
+                break
+        else:
+            inner_source_order = []
+
+        if isinstance(entry[key], list):
+            for elem in entry[key]:
+                if isinstance(elem, dict):
+                    _update_json_source_order(inner_source_order, elem)
+        if isinstance(entry[key], dict):
+            _update_json_source_order(inner_source_order, cast(dict, entry[key]))
+        new_keys.append((key, inner_source_order))
+
+    _merge_new_sort_order(source_order, new_keys)
+
+
+def _merge_new_sort_order(source_order_in: list[tuple[str, list]], new_keys_in: list[tuple[str, list]]) -> None:
+    """
+    Tries to merge the structure in source order with the structure of entry
+    so that the order of source_order preserved, while new elements are added in between in
+    appropriate places. If the order is conflicting we don't really care what happens,
+    order should be hard coded in config for those cases.
+
+    ignore the inner lists as they are fixed by caller
+
+    does this in place, since references of source_orders are given to modules before all
+    entries are read.
+    """
+
     source_place = 0
-    for i, key in enumerate(new_keys):
+    for i, (key, inner) in enumerate(new_keys_in):
+        new_keys = [key for key, _ in new_keys_in]
+        source_order = [key for key, _ in source_order_in]
+
         if key in source_order:
             source_place = source_order.index(key)
             continue
@@ -31,13 +70,12 @@ def _update_json_source_order(source_order: list[str], new_keys: list[str]) -> l
                 # but get the index  from source_order
                 anchor_idx = source_order.index(future_key)
                 # splice in the new element immediately before anchor
-                source_order.insert(anchor_idx, key)
+                source_order_in.insert(anchor_idx, (key, inner))
                 source_place = anchor_idx
                 break
         else:
             # anchor not found - add
-            source_order.append(key)
-    return source_order
+            source_order_in.append((key, inner))
 
 
 def _find_source_files(pipeline_config: PipelineConfig) -> tuple[list[Path], str]:
@@ -62,7 +100,8 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
 
     # size, array because generator needs mutable object
     size = [0]
-    source_order: list[str] = []
+    # recursive since we now support trees
+    source_order: list[tuple[str, list]] = []
     if suffix in [".csv", ".tsv"]:
 
         def get_entries() -> Iterator[Entry]:
@@ -76,7 +115,7 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
                 file_source_order = next(reader, None) or []
                 if not source_order:
                     for elem in file_source_order:
-                        source_order.append(elem)
+                        source_order.append((elem, []))
                 else:
                     if source_order != file_source_order:
                         raise RuntimeError("Differing headers in CSV/TSV files")
@@ -85,7 +124,7 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
                 cast_fields: list[dict[str, str]] = import_settings["csv"]["cast_fields"]
 
                 for row in reader:
-                    entry: dict[str, str | int | float] = dict(zip(source_order, row))
+                    entry: dict[str, str | int | float] = dict(zip([elem[0] for elem in source_order], row))
                     # parse values
                     for field in cast_fields:
                         if field["type"] == "int":
@@ -136,8 +175,7 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
             # get the sort order from the input JSON
             # this could be configurable to speed up
             for entry in entries:
-                keys = list(entry.keys())
-                _update_json_source_order(source_order, keys)
+                _update_json_source_order(source_order, entry)
                 size[0] += 1
                 yield entry
 

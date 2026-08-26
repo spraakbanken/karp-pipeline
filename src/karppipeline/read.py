@@ -100,27 +100,45 @@ def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], It
 
     else:
 
-        def get_entries() -> Iterator[Entry]:
+        def get_entries_from_file() -> Iterator[Entry]:
+            """
+            Decides if we should parse the whole while as JSON or each row as JSON (JSONL)
+            Yields entries
+            """
+            # must be a top-level array for now
             for input_file in input_files:
-                with open(input_file) as fp:
+                with open(input_file, "rb") as fp:
                     try:
-                        for line_nr, line in enumerate(fp):
-                            if not line.strip():
-                                # we allow empty lines
-                                continue
-
+                        if suffix == ".json":
+                            # if json - parse as array and yield all elements in file
                             try:
-                                entry = json.loads(line)
+                                elems: list[Entry] = json.load_array(fp.read())
                             except JSONDecodeError:
-                                raise PipelineException(f"Could not parse JSON on line: {line_nr}")
+                                raise PipelineException(f"Could not parse JSON in: {input_file}")
+                            yield from elems
+                        else:
+                            # if jsonl - read one line at a time, parse and yield
+                            for line_nr, line in enumerate(fp):
+                                if not line.strip():
+                                    # we allow empty lines
+                                    continue
+                                try:
+                                    entry = json.loads(line)
+                                except JSONDecodeError:
+                                    raise PipelineException(f"Could not parse JSON on line: {line_nr}")
+                                yield entry
 
-                            # get the sort order from the input JSON
-                            # this could be configurable to speed up
-                            keys = list(entry.keys())
-                            _update_json_source_order(source_order, keys)
-                            size[0] += 1
-                            yield entry
                     except UnicodeDecodeError:
                         raise PipelineException(f"Unicode decode error for file: {input_file}")
+
+        def get_entries() -> Iterator[Entry]:
+            entries = get_entries_from_file()
+            # get the sort order from the input JSON
+            # this could be configurable to speed up
+            for entry in entries:
+                keys = list(entry.keys())
+                _update_json_source_order(source_order, keys)
+                size[0] += 1
+                yield entry
 
     return source_order, size, get_entries()

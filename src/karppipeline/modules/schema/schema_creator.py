@@ -32,7 +32,7 @@ def _create_fields(pipeline_config: PipelineConfig, entries: Iterator[Entry]) ->
             try:
                 _check_or_create_field(pipeline_config, schema, key, values)
             except PipelineException as e:
-                raise PipelineException(f"Error for entry on row: {idx + 1}: " + e.args[0])
+                raise PipelineException(f"Error for entry number: {idx + 1}: " + e.args[0])
     return schema
 
 

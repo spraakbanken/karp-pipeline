@@ -33,7 +33,7 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
         if not pipeline_config.description:
             raise RuntimeError("sbxrepo: 'description' not found")
         # metadata repo also supports short_description, but we use HTML in our description and it is not allowed in metadata
-        metadata["description"] = pipeline_config.description.model_dump(exclude_none=True)
+        metadata["short_description"] = pipeline_config.description.model_dump(exclude_none=True)
 
     date_str = _get_current_date_string()
     if "created" not in metadata:

@@ -1,13 +1,15 @@
 from datetime import datetime
 from typing import cast
 import urllib.request
+
+from pydantic import BaseModel
 from karppipeline.common import PipelineException
 from karppipeline.util.frozendict import frozendict
 
 import jsonschema_rs
 
 
-from karppipeline.models import PipelineConfig
+from karppipeline.models import MultiLang, PipelineConfig
 from karppipeline.modules.sbxrepo.models import SBXRepoConfig
 from karppipeline.util import json, yaml
 from karppipeline.modules.sbxrepo.common import _get_config, _get_metadata_file
@@ -119,4 +121,7 @@ def _set_fallback(config: SBXRepoConfig, metadata: dict[str, object], name: str)
     if name not in metadata or not metadata[name]:
         if not fallbacks or not (fallback := getattr(fallbacks, name)):
             raise RuntimeError(f"sbxrepo: '{name}' not found")
-        metadata[name] = fallback
+        if isinstance(fallback, BaseModel):
+            metadata[name] = fallback.model_dump()
+        else:
+            metadata[name] = fallback

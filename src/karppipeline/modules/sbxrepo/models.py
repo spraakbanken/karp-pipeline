@@ -27,6 +27,7 @@ class MetadataAttributes(BaseModel):
     other_references: Sequence[str] = ()
     intended_uses: NonEmptyMultiLang | None = None
     language_codes: list[str] = ["swe"]
+    origin: str = "sbx"
 
 
 class Metadata(MetadataAttributes):

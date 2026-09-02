@@ -129,11 +129,13 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
                     if val is not None:
                         new_entry[field.target] = _convert_value(field.converter, val)
 
+        
+
         for key in entry_schema.keys():
             # clean up all text fields
             if entry_schema[key].type == "text" and key in new_entry:
                 if not entry_schema[key].collection:
-                    new_entry[key] = _clean_text(new_entry[key]) if new_entry[key] else None
+                    new_entry[key] = _clean_text(new_entry[key]) if new_entry[key] is not None else None
                 else:
                     # this also causes all None to be []
                     new_entry[key] = [_clean_text(text) for text in new_entry[key] or []]

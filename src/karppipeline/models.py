@@ -159,7 +159,7 @@ class ConfiguredField(BaseModel):
     def validate_fields_rules(self):
         if self.categories:
             self.categorical = True
-        
+
         if self.label is None and self.type != FieldTypeEnum.object:
             raise PipelineException("Label must be configured for each field (unless type is object)")
 

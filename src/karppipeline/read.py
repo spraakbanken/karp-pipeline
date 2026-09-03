@@ -86,7 +86,7 @@ def _find_source_files(pipeline_config: PipelineConfig) -> tuple[list[Path], str
     return files, suffix
 
 
-def read_data(pipeline_config: PipelineConfig) -> tuple[list[str], list[int], Iterator[Entry]]:
+def read_data(pipeline_config: PipelineConfig) -> tuple[list[tuple[str, list]], list[int], Iterator[Entry]]:
     source_type = pipeline_config.import_settings.get("source_type", None)
     if source_type:
         instance_name, mod = load_importer(pipeline_config, cast(str, source_type))

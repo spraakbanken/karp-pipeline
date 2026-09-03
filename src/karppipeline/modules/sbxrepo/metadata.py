@@ -9,7 +9,7 @@ from karppipeline.util.frozendict import frozendict
 import jsonschema_rs
 
 
-from karppipeline.models import MultiLang, PipelineConfig
+from karppipeline.models import PipelineConfig
 from karppipeline.modules.sbxrepo.models import SBXRepoConfig
 from karppipeline.util import json, yaml
 from karppipeline.modules.sbxrepo.common import _get_config, _get_metadata_file

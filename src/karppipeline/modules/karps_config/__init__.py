@@ -28,7 +28,6 @@ dependencies = [
 ]
 
 
-
 def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> Callable[[Entry | None], Entry | None]:
     """
     Create configuration for Karp-s backend

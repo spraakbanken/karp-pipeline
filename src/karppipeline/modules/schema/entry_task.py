@@ -54,11 +54,19 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
         entry_schema.clear()
     for field in converted_fields:
         if field.exclude:
+            # remove exluded field from schema (it might not be there)
             tmp: EntrySchema = entry_schema
             parts = field.name.split(".")
+            aborted = False
             for part in parts[:-1]:
-                tmp = tmp[part].fields
-            tmp.pop(parts[-1], None)
+                thing = tmp.get(part)
+                if thing:
+                    tmp = thing.fields
+                else:
+                    aborted = True
+                    break
+            if not aborted:
+                tmp.pop(parts[-1], None)
         else:
             if field.name == "*":
                 # the converter must set the schema, placeholder value
@@ -97,15 +105,19 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
             return None
         logger.debug("schema entry task")
 
-        def init(entry_schema, entry) -> Entry:
+        def init(entry_schema, entry) -> dict[str, Any]:
             new_entry = {}
             for key in entry_schema.keys():
                 if key in entry:
                     if entry_schema[key].type == "object":
-                        asdf = init(entry_schema[key].fields, entry[key])
+                        inner_obj = entry[key]
+                        if not isinstance(inner_obj, list):
+                            new_val = init(entry_schema[key].fields, inner_obj)
+                        else:
+                            new_val = [init(entry_schema[key].fields, elem) for elem in inner_obj]
                     else:
-                        asdf = entry[key]
-                    new_entry[key] = asdf
+                        new_val = entry[key]
+                    new_entry[key] = new_val
             return new_entry
 
         new_entry = init(entry_schema, entry)
@@ -128,8 +140,6 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
                         val = entry[field.name]
                     if val is not None:
                         new_entry[field.target] = _convert_value(field.converter, val)
-
-        
 
         for key in entry_schema.keys():
             # clean up all text fields

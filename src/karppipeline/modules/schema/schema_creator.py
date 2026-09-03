@@ -8,7 +8,7 @@ from karppipeline.read import read_data
 type_lookup: dict[type, str] = {int: "integer", str: "text", bool: "bool", float: "float"}
 
 
-def pre_import_resource(pipeline_config: PipelineConfig) -> tuple[EntrySchema, list[str], list[int]]:
+def pre_import_resource(pipeline_config: PipelineConfig) -> tuple[EntrySchema, list[tuple[str, list]], list[int]]:
     """
     reads source file and generates a schema, return (source order, size of resource, schema)
     source order is roughly the order that fields occur in source file

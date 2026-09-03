@@ -25,10 +25,7 @@ def export(config: PipelineConfig, _, **_kwargs):
                 if not entry:
                     break
                 flattened_entry = flatten(entry)
-                # if "sv" in entry and "pekare" in entry["sv"]:
-                #     breakpoint()
                 fp.write(json.dumps(flattened_entry) + "\n")
-                
 
     gen = json_dump()
     next(gen)
@@ -54,7 +51,7 @@ def recursive_flatten(
     res = []
     if isinstance(val, dict):
         for key, inner_val in val.items():
-            inner = recursive_flatten(inner_val)
+            inner = recursive_flatten(inner_val, collection_allowed=collection_allowed)
             for inner_key, item in inner:
                 if inner_key:
                     new_key = f"{key}.{inner_key}"
@@ -71,7 +68,7 @@ def recursive_flatten(
                 # lists with flat objects are allowed in this format
                 new_list.append(dict(inner_val))
             else:
-                # if inner_val was a list it would have crashed, 
+                # if inner_val was a list it would have crashed,
                 # [0] selects the first elem and
                 # [1] throws away the key used in recursion
                 new_list.append(inner_val[0][1])

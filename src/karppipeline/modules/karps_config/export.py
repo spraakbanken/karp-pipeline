@@ -103,7 +103,7 @@ def create_karps_backend_config(
         def flatten_order_tree(fields: Iterable[tuple[str, Any]], target: list[str], path=""):
             for field_name, inner_fields in fields:
                 if inner_fields:
-                    flatten_order_tree(inner_fields, target, path=field_name + ".")
+                    flatten_order_tree(inner_fields, target, path=path + field_name + ".")
                 else:
                     target.append(path + field_name)
 

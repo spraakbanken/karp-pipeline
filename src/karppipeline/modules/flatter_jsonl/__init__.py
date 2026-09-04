@@ -60,7 +60,7 @@ def recursive_flatten(
                 res.append((new_key, item))
     elif isinstance(val, list):
         if not collection_allowed:
-            raise PipelineException("Collections in collections are not allowed")
+            raise PipelineException("Flat JSON (used for Karp-s): Collections in collections are not allowed")
         new_list = []
         for elem in val:
             inner_val = recursive_flatten(elem, collection_allowed=False)

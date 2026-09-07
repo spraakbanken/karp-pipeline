@@ -29,6 +29,8 @@ def run_subprocess(cmd: str | list[str], err_msg=None, check=True, shell=False, 
             if err:
                 logger.error(err)
         if check and p.returncode:
+            if not err_msg:
+                err_msg = f"cmd {cmd} failed."
             raise PipelineException(err_msg)
         return p.returncode
     else:

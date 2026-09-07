@@ -22,7 +22,7 @@ __all__ = ["export", "install", "dependencies"]
 dependencies = [Dependency("jsonl"), Dependency("sbxmetadata", optional=True)]
 
 
-MODULE_NAME: Final[str] = "karp"
+MODULE_NAME: Final[str] = "karp_red"
 
 
 class KarpRedConfig(BaseModel):
@@ -32,11 +32,14 @@ class KarpRedConfig(BaseModel):
     cli_path: Path
     cli_working_dir: Path
     api_key: str | None = None
+    # if there already exists a resource with this resource id - it will be replaced
+    replace: bool = False
 
 
 def export(config: PipelineConfig, module_data, **_kwargs):
     entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
-    name = module_data["sbxmetadata"].get("name") or config.name and config.name.model_dump()
+    metadata = module_data.get("sbxmetadata") or {}
+    name = metadata.get("name") or config.name and config.name.model_dump()
     if not name:
         raise PipelineException("karp: 'name' missing")
     _create_karp_backend_config(config, entry_schema, name)
@@ -44,13 +47,20 @@ def export(config: PipelineConfig, module_data, **_kwargs):
 
 def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchema, name: dict[str, str]):
     karp_config = {"resource_id": config.resource_id, "resource_name": name["swe"], "fields": {}}
-    for field_name, field in entry_schema.items():
-        dumped = field.asdict()
-        if field.type == "text":
-            dumped["type"] = "string"
-        karp_config["fields"][field_name] = dumped
 
-    output_dir = create_output_dir(config.workdir) / "karp"
+    def dump(schema, target):
+        for field_name, field in schema.items():
+            dumped = field.asdict()
+            if field.type == "text":
+                dumped["type"] = "string"
+            if field.type == "object":
+                dump(field.fields, dumped["fields"])
+            del dumped["name"]
+            target[field_name] = dumped
+
+    dump(entry_schema, karp_config["fields"])
+
+    output_dir = create_output_dir(config.workdir) / "karp_red"
     output_dir.mkdir(exist_ok=True)
     with open(output_dir / f"{config.resource_id}.yaml", "w") as fp:
         yaml.dump(karp_config, fp)
@@ -58,19 +68,22 @@ def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchem
 
 def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
     if uninstall:
-        raise PipelineException("Uninstall not supported for module karp")
+        raise PipelineException("Uninstall not supported for module karp_red")
 
-    config_file = get_output_dir(config.workdir) / "karp" / f"{config.resource_id}.yaml"
+    config_file = get_output_dir(config.workdir) / "karp_red" / f"{config.resource_id}.yaml"
 
-    # adding a resurce in Karp is done in three steps
+    # adding a resurce in Karp red is done in three steps
     # creating resource with config
     karp_red_config = KarpRedConfig.model_validate(config.modules[instance])
+
+    if karp_red_config.replace:
+        _karp_cli_runner(karp_red_config, ["resource", "delete", config.resource_id, "--force"])
 
     _karp_cli_runner(karp_red_config, ["resource", "create", str(config_file)])
     # adding entries
     data_file = get_output_dir(config.workdir) / f"{config.resource_id}.jsonl"
     quoted_resource_id = shlex.quote(config.resource_id)
-    _karp_cli_runner(karp_red_config, ["entries", "add", quoted_resource_id, shlex.quote(str(data_file))])
+    _karp_cli_runner(karp_red_config, ["entries", "add", quoted_resource_id, str(data_file)])
     # publish the resource
     _karp_cli_runner(karp_red_config, ["resource", "publish", quoted_resource_id])
 
@@ -81,7 +94,7 @@ def import_(pipeline_config: PipelineConfig, instance=MODULE_NAME):
     """
     karp_red_config = KarpRedConfig.model_validate(pipeline_config.modules[instance])
 
-    output_dir = Path("output/karp-red")
+    output_dir = Path("output/karp_red")
     output_dir.mkdir(exist_ok=True)
     karp_red_output = output_dir.absolute() / "import.jsonl"
 

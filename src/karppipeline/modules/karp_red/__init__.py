@@ -56,6 +56,8 @@ def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchem
             if field.type == "object":
                 dump(field.fields, dumped["fields"])
             del dumped["name"]
+            if "categories" in dumped:
+                del dumped["categories"]
             target[field_name] = dumped
 
     dump(entry_schema, karp_config["fields"])
@@ -77,7 +79,7 @@ def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
     karp_red_config = KarpRedConfig.model_validate(config.modules[instance])
 
     if karp_red_config.replace:
-        _karp_cli_runner(karp_red_config, ["resource", "delete", config.resource_id, "--force"])
+        _karp_cli_runner(karp_red_config, ["resource", "delete", config.resource_id, "--force"], check=False)
 
     _karp_cli_runner(karp_red_config, ["resource", "create", str(config_file)])
     # adding entries
@@ -155,7 +157,7 @@ def _karp_cli_entries_export(config: KarpRedConfig, resource_id: str, final_outp
         subprocess.run(["ssh", "--", quoted_host, f"rm -f -- {shlex.quote(output_file)}"])
 
 
-def _karp_cli_runner(config: KarpRedConfig, karp_args):
+def _karp_cli_runner(config: KarpRedConfig, karp_args, check=True):
     """
     Run karp-cli on the configured host. Quote args before passing to this function
     """
@@ -170,4 +172,4 @@ def _karp_cli_runner(config: KarpRedConfig, karp_args):
     else:
         kwargs = {"cwd": cwd}
 
-    internal_subprocess.run_subprocess(args, check=True, **kwargs)
+    internal_subprocess.run_subprocess(args, check=False, **kwargs)

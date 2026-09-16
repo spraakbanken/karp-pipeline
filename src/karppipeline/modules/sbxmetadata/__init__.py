@@ -35,7 +35,7 @@ def _get_data_path(config: PipelineConfig) -> Path:
 
 
 def _fetch_metadata_from_api(resource_id) -> dict[str, object]:
-    url = f"https://ws.spraakbanken.gu.se/ws/metadata/v3/?resource={resource_id}&legacy=false"
+    url = f"https://ws.spraakbanken.gu.se/ws/metadata/v4/source/lexicon/{resource_id}"
     req = urllib.request.Request(url)
     try:
         with urllib.request.urlopen(req) as resp:
@@ -46,25 +46,6 @@ def _fetch_metadata_from_api(resource_id) -> dict[str, object]:
         raise RuntimeError(f"Metadata API not reachable on {url}") from e
     try:
         metadata = json.loads(body)
-        if metadata:
-            # these two properties are not valid in a metadata *file*
-            del metadata["has_description"]
-            del metadata["id"]
-
-            # removing auto set values
-            for download in metadata.get("downloads", ()):
-                del download["last-modified"]
-                del download["size"]
-
-            # only language code should be used in the metadata file
-            metadata["language_codes"] = []
-            for language in metadata["languages"]:
-                metadata["language_codes"].append(language["code"])
-            del metadata["languages"]
-            for download in metadata.get("downloads", []):
-                license = download["license"]["id"]
-                download["license"] = license
-
         return metadata
     except JSONDecodeError:
         return {}

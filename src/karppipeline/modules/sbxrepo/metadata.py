@@ -74,7 +74,8 @@ def _create_sb_metadata_file(pipeline_config: PipelineConfig, size, metadata: di
                 "type": "lexicon",
             }
         )
-        downloads.append(frozen_download)
+        if frozen_download not in downloads:
+            downloads.append(frozen_download)
     # unfreeze
     metadata["downloads"] = [dict(download) for download in downloads]
 

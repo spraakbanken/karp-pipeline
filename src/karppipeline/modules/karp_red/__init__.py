@@ -6,7 +6,7 @@ from typing import Final
 from typing import NotRequired, TypedDict
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.execution.dependency import Dependency
-from karppipeline.models import EntrySchema, PipelineConfig
+from karppipeline.models import ConfiguredField, EntrySchema, PipelineConfig
 from karppipeline.util import subprocess as internal_subprocess, yaml
 from pydantic import BaseModel, ConfigDict
 
@@ -46,21 +46,41 @@ def export(config: PipelineConfig, module_data, **_kwargs):
 
 
 def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchema, name: dict[str, str]):
-    karp_config = {"resource_id": config.resource_id, "resource_name": name["swe"], "fields": {}}
+    karp_config = {
+        "resource_id": config.resource_id,
+        "resource_name": name["swe"],
+        "fields": {},
+        "protected": config.limited_access,
+        "protected_metadata": config.protected_metadata,
+    }
 
-    def dump(schema, target):
+    def to_dict(ls: list[ConfiguredField]) -> dict[str, ConfiguredField]:
+        return {elem.name: elem for elem in ls}
+
+    def dump(schema, target, configured_fields: dict[str, ConfiguredField]):
         for field_name, field in schema.items():
             dumped = field.asdict()
+
+            conf_field = configured_fields.get(field.name)
+            if conf_field and conf_field.label:
+                dumped["label"] = conf_field.label.model_dump()
+            else:
+                dumped["label"] = field.name
+
             if field.type == "text":
                 dumped["type"] = "string"
             if field.type == "object":
-                dump(field.fields, dumped["fields"])
+                if conf_field:
+                    inner_fields = conf_field.fields
+                else:
+                    inner_fields = []
+                dump(field.fields, dumped["fields"], to_dict(inner_fields))
             del dumped["name"]
             if "categories" in dumped:
                 del dumped["categories"]
             target[field_name] = dumped
 
-    dump(entry_schema, karp_config["fields"])
+    dump(entry_schema, karp_config["fields"], to_dict(config.fields))
 
     output_dir = create_output_dir(config.workdir) / "karp_red"
     output_dir.mkdir(exist_ok=True)

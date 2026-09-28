@@ -63,6 +63,8 @@ def create_karps_backend_config(
                     category: category_label.model_dump()
                     for category, category_label in conf_field.category_labels.items()
                 }
+            if conf_field.kind:
+                field_dict["kind"] = conf_field.kind
 
         if "label" not in field_dict:
             if pipeline_config.protected_metadata:

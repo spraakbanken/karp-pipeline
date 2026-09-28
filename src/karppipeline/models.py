@@ -3,7 +3,7 @@ from dataclasses import InitVar, dataclass, field
 from enum import Enum
 from pathlib import Path
 import re
-from typing import Self, cast
+from typing import Any, Self, cast
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -144,7 +144,7 @@ class FieldTypeEnum(str, Enum):
 
 
 class ConfiguredField(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     name: str
     type: FieldTypeEnum
@@ -154,6 +154,10 @@ class ConfiguredField(BaseModel):
     categorical: bool = False
     categories: list[str] = Field(default_factory=list)
     category_labels: dict[str, NonEmptyMultiLang] = Field(default_factory=dict)
+    # sub-type / class - can be used for plugins or other systems.
+    kind: str | None = None
+    # can be used for miscellaneous information needed by other systems.
+    params: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_fields_rules(self):

@@ -34,7 +34,7 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
     """
     input_entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
     entry_schema = backend_export.flatten_entry_schema(input_entry_schema)
-    source_order: list[str] = module_data["schema"]["source_order"]
+    source_order: list[str] = backend_export.flatten_source_order(module_data["schema"]["source_order"])
     size: int = module_data["schema"]["size"]
 
     create_output_dir(config.workdir)

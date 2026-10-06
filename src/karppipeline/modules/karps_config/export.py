@@ -36,13 +36,27 @@ def flatten_pipeline_fields(fields) -> dict[str, ConfiguredField]:
     return flatten_entry_schema(field_collector(fields), field_collector)
 
 
+def flatten_order_tree(fields: Iterable[tuple[str, Any]], target: list[str], path=""):
+    for field_name, inner_fields in fields:
+        if inner_fields:
+            flatten_order_tree(inner_fields, target, path=path + field_name + ".")
+        else:
+            target.append(path + field_name)
+
+
+def flatten_source_order(source_order: list[tuple[str, list]]) -> list[str]:
+    flat_source_order = []
+    flatten_order_tree(source_order, flat_source_order)
+    return flat_source_order
+
+
 def create_karps_backend_config(
     pipeline_config: PipelineConfig,
     karps_config: KarpsExportConfig,
     name: dict[str, str],
     description: dict[str, str],
     entry_schema: EntrySchema,
-    source_order,  # TODO type
+    source_order: list[str],
     size: int,
 ):
 
@@ -90,7 +104,6 @@ def create_karps_backend_config(
 
     def order_fields(fields: list[str]) -> Iterable[str]:
         flatten_pipeline_fields = []
-        flattened_source_order = []
 
         def flatten_field_conf(fields: Iterable[ConfiguredField], target: list[str]):
             """
@@ -102,21 +115,13 @@ def create_karps_backend_config(
                 else:
                     target.append(field.name)
 
-        def flatten_order_tree(fields: Iterable[tuple[str, Any]], target: list[str], path=""):
-            for field_name, inner_fields in fields:
-                if inner_fields:
-                    flatten_order_tree(inner_fields, target, path=path + field_name + ".")
-                else:
-                    target.append(path + field_name)
-
         flatten_field_conf(pipeline_config.fields, flatten_pipeline_fields)
-        flatten_order_tree(source_order, flattened_source_order)
 
         # initialize main sort order
         order_map = {name: i for i, name in enumerate(flatten_pipeline_fields)}
 
         # order by apperance in input objects for non-configured fields
-        for i, name in enumerate(flattened_source_order):
+        for i, name in enumerate(source_order):
             if name not in order_map:
                 order_map[name] = len(flatten_pipeline_fields) + i
 

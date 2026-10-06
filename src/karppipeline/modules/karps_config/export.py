@@ -103,19 +103,7 @@ def create_karps_backend_config(
         )
 
     def order_fields(fields: list[str]) -> Iterable[str]:
-        flatten_pipeline_fields = []
-
-        def flatten_field_conf(fields: Iterable[ConfiguredField], target: list[str]):
-            """
-            For some reason, ConfiguredField's already have collapsed their names at this point
-            """
-            for field in fields:
-                if field.type == "object":
-                    flatten_field_conf(field.fields, target)
-                else:
-                    target.append(field.name)
-
-        flatten_field_conf(pipeline_config.fields, flatten_pipeline_fields)
+        flatten_pipeline_fields = [field.name for field in configured_fields.values()]
 
         # initialize main sort order
         order_map = {name: i for i, name in enumerate(flatten_pipeline_fields)}

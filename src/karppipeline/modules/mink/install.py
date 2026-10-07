@@ -2,8 +2,9 @@ import logging
 from pathlib import Path
 from typing import Any, cast
 
-from karppipeline.common import create_output_dir, get_output_dir
+from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.models import PipelineConfig
+from karppipeline.modules.karps_config import MODULE_NAME as KARPS_MODULE_NAME
 from karppipeline.modules.karps.models import KarpsExportConfig
 from karppipeline.modules.mink.mink_api import MinkAPI
 from karppipeline.util import yaml
@@ -28,7 +29,11 @@ def mink_install(config: PipelineConfig, mink_api: MinkAPI):
 
     # generate mink karp-pipeline config
     mink_config = config.modules["mink"]
-    karps_config = cast(dict[str, Any], mink_config.get("karps", {}))
+    karps_config = config.modules[KARPS_MODULE_NAME]
+    if "karps" in mink_config:
+        karps_config = cast(dict[str, Any], mink_config.get(KARPS_MODULE_NAME, {}))
+    elif not karps_config:
+        raise PipelineException("Either configure mink.karps or karps module to make Mink installation work.")
     if "link" not in karps_config:
         karps_config["link"] = f"https://spraakbanken.gu.se/mink/library/lexicon/{actual_resource_id}"
     # check that all needed keys are created, but don't use model

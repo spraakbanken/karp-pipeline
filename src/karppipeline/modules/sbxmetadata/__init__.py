@@ -1,13 +1,16 @@
+import logging
 from pathlib import Path
 import urllib.request
 from json import JSONDecodeError
 from urllib.error import HTTPError, URLError
-from karppipeline.common import create_output_dir
+from karppipeline.common import PipelineException, create_output_dir
 import karppipeline.util.json as json
 
 from karppipeline.models import PipelineConfig
 
 __all__ = ["export", "load", "dependencies"]
+
+logger = logging.getLogger(__name__)
 
 
 dependencies = []
@@ -37,13 +40,16 @@ def _get_data_path(config: PipelineConfig) -> Path:
 def _fetch_metadata_from_api(resource_id) -> dict[str, object]:
     url = f"https://ws.spraakbanken.gu.se/ws/metadata/v4/source/lexicon/{resource_id}"
     req = urllib.request.Request(url)
+    logger.info("Trying to fetch metadata from SB metadata API (10 second timeout)")
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             body = resp.read().decode("utf-8")
     except HTTPError as e:
-        raise RuntimeError(f"Error when calling metadata API on {url}") from e
+        raise PipelineException(f"Error when calling metadata API on {url}") from e
     except URLError as e:
-        raise RuntimeError(f"Metadata API not reachable on {url}") from e
+        raise PipelineException(f"Metadata API not reachable on {url}") from e
+    except TimeoutError as e:
+        raise PipelineException(f"Metadata API timed out on {url}") from e
     try:
         metadata = json.loads(body)
         return metadata

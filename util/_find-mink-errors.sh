@@ -5,7 +5,7 @@
 echo "Finding errors newer than: $1"
 echo "--------------------------------------"
 
-for f in `find /home/fksb/mink-dev-data/lexicon/ -name mink.out -newermt "$1"`; do
+for f in `find /home/fksb/mink-data/lexicon/ -name mink.out -newermt "$1"`; do
   error=`grep ERROR $f`
   if grep -q ERROR "$f"; then
     echo $(dirname -- $f | xargs basename)

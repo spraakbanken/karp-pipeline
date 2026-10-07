@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
-from karppipeline.models import PipelineConfig
+from karppipeline.models import NonEmptyMultiLang, PipelineConfig
 from karppipeline.modules.karps_config import MODULE_NAME as KARPS_MODULE_NAME
 from karppipeline.modules.karps.models import KarpsExportConfig
 from karppipeline.modules.mink.mink_api import MinkAPI
@@ -36,15 +36,18 @@ def mink_install(config: PipelineConfig, mink_api: MinkAPI):
         raise PipelineException("Either configure mink.karps or karps module to make Mink installation work.")
     if "link" not in karps_config:
         karps_config["link"] = f"https://spraakbanken.gu.se/mink/library/lexicon/{actual_resource_id}"
-    # check that all needed keys are created, but don't use model
-    KarpsExportConfig.model_validate(karps_config)
+    # validate and instantiate
+    karps_config_model_instance = KarpsExportConfig.model_validate(karps_config)
+
+    name = config.name if config.name else NonEmptyMultiLang(actual_resource_id)
+    description = config.description if config.description else NonEmptyMultiLang(actual_resource_id)
 
     # can't use the PipelineConfig class since parent is not a part of model and fields are missing (inherited from parent)
     config_dict = {
         "resource_id": actual_resource_id,
-        "name": config.name.model_dump() if config.name else actual_resource_id,
-        "description": config.description.model_dump() if config.description else actual_resource_id,
-        "karps": karps_config,
+        "name": name.model_dump(),
+        "description": description.model_dump(),
+        "karps": karps_config_model_instance.model_dump(exclude_defaults=True, exclude_unset=True),
         "parent": "/home/fksb/karp-config/config.yaml",
     }
 

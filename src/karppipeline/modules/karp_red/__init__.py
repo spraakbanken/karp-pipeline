@@ -92,25 +92,33 @@ def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchem
 
 
 def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
-    if uninstall:
-        raise PipelineException("Uninstall not supported for module karp_red")
-
-    config_file = get_output_dir(config.workdir) / "karp_red" / f"{config.resource_id}.yaml"
-
     # adding a resurce in Karp red is done in three steps
     # creating resource with config
     karp_red_config = KarpRedConfig.model_validate(config.modules[instance])
 
-    if karp_red_config.replace:
+    config_file = get_output_dir(config.workdir) / "karp_red" / f"{config.resource_id}.yaml"
+
+    if karp_red_config.replace or uninstall:
+        logger.info(f"Deleting {config.resource_id} from Karp edit mode")
         _karp_cli_runner(karp_red_config, ["resource", "delete", config.resource_id, "--force"], check=False)
 
-    _karp_cli_runner(karp_red_config, ["resource", "create", str(config_file)])
-    # adding entries
-    data_file = get_output_dir(config.workdir) / f"{config.resource_id}.jsonl"
-    quoted_resource_id = shlex.quote(config.resource_id)
-    _karp_cli_runner(karp_red_config, ["entries", "add", quoted_resource_id, str(data_file)])
-    # publish the resource
-    _karp_cli_runner(karp_red_config, ["resource", "publish", quoted_resource_id])
+    if not uninstall:
+        # first check if resource already exists
+        res = _karp_cli_runner(karp_red_config, ["resource", "show", config.resource_id], check=False)
+        if not res:
+            # if resource show command returns without errors, the resource exists and we should crash
+            raise PipelineException("Resource already exists in Karp edit mode")
+
+        logger.info(f"Creating resource {config.resource_id} in Karp edit mode")
+        _karp_cli_runner(karp_red_config, ["resource", "create", str(config_file)])
+        # adding entries
+        data_file = get_output_dir(config.workdir) / f"{config.resource_id}.jsonl"
+        quoted_resource_id = shlex.quote(config.resource_id)
+        logger.info("Adding entries to Karp edit mode")
+        _karp_cli_runner(karp_red_config, ["entries", "add", quoted_resource_id, str(data_file)])
+        # publish the resource
+        _karp_cli_runner(karp_red_config, ["resource", "publish", quoted_resource_id])
+        logger.info("Karp edit mode installation done.")
 
 
 def import_(pipeline_config: PipelineConfig, instance=MODULE_NAME):
@@ -195,4 +203,4 @@ def _karp_cli_runner(config: KarpRedConfig, karp_args, check=True):
     else:
         kwargs = {"cwd": cwd}
 
-    internal_subprocess.run_subprocess(args, check=False, **kwargs)
+    return internal_subprocess.run_subprocess(args, check=check, **kwargs)

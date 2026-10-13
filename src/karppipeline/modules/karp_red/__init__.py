@@ -7,7 +7,7 @@ from typing import NotRequired, TypedDict
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.execution.dependency import Dependency
 from karppipeline.models import ConfiguredField, EntrySchema, PipelineConfig
-from karppipeline.util import subprocess as internal_subprocess, yaml
+from karppipeline.util import fileops, subprocess as internal_subprocess, yaml
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -98,6 +98,10 @@ def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
 
     config_file = get_output_dir(config.workdir) / "karp_red" / f"{config.resource_id}.yaml"
 
+    if karp_red_config.cli_host:
+        # upload config file to server
+        config_file = fileops.copy(config_file, None, host=karp_red_config.cli_host)
+
     if karp_red_config.replace or uninstall:
         logger.info(f"Deleting {config.resource_id} from Karp edit mode")
         _karp_cli_runner(karp_red_config, ["resource", "delete", config.resource_id, "--force"], check=False)
@@ -111,8 +115,13 @@ def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
 
         logger.info(f"Creating resource {config.resource_id} in Karp edit mode")
         _karp_cli_runner(karp_red_config, ["resource", "create", str(config_file)])
+
         # adding entries
         data_file = get_output_dir(config.workdir) / f"{config.resource_id}.jsonl"
+        if karp_red_config.cli_host:
+            # upload data file to server
+            data_file = fileops.copy(data_file, None, host=karp_red_config.cli_host)
+
         quoted_resource_id = shlex.quote(config.resource_id)
         logger.info("Adding entries to Karp edit mode")
         _karp_cli_runner(karp_red_config, ["entries", "add", quoted_resource_id, str(data_file)])

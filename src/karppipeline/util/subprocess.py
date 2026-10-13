@@ -9,11 +9,16 @@ from karppipeline.util.logging import dry_run_info
 logger = logging.getLogger(__name__)
 
 
-def run_subprocess(cmd: str | list[str], err_msg=None, check=True, shell=False, print_output=True, cwd=None) -> int:
+def run_subprocess(*args, **kwargs) -> int:
+    return run_subprocess_with_output(*args, **kwargs)[0]
+
+
+def run_subprocess_with_output(
+    cmd: str | list[str], err_msg=None, check=True, shell=False, print_output=True, cwd=None
+) -> tuple[int, str, str]:
     log_output = f"Running subprocess: {''.join(cmd)}"
     if DRY_RUN:
         dry_run_info(logger, log_output)
-        return 0
     else:
         logger.debug(log_output)
     kwargs = {}
@@ -32,9 +37,9 @@ def run_subprocess(cmd: str | list[str], err_msg=None, check=True, shell=False, 
             if not err_msg:
                 err_msg = f"cmd {cmd} failed."
             raise PipelineException(err_msg)
-        return p.returncode
+        return p.returncode, p.stdout, p.stderr
     else:
         # if DRY_RUN is set, print the command to be run and return success error code
         cwd_logging = f", in working directory: '{cwd}'." if cwd else ""
-        dry_run_info(logger, f"Run command '{''.join(cmd)}'{cwd_logging}")
-        return 0
+        dry_run_info(logger, f"Run command '{' '.join(cmd)}'{cwd_logging}")
+        return 0, "", ""

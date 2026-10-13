@@ -11,7 +11,23 @@ from karppipeline.util.logging import dry_run_info
 logger = logging.getLogger(__name__)
 
 
-def copy(source, target, host=None) -> None:
+def copy(source: Path, target: Path | None, host=None) -> Path:
+    if target is None:
+        dry_run_info(logger, f"Creating tmp file on {host}")
+        # create a tmp file for target
+        if DRY_RUN:
+            target = Path("/dev/null")
+        else:
+            if host:
+                target = Path(
+                    subprocess.run_subprocess_with_output(
+                        ["ssh", "--", host, "mktemp", f"/tmp/tmp.XXXXXX{source.suffix}"],
+                        check=True,
+                    )[1].strip()
+                )
+            else:
+                target = Path(subprocess.run_subprocess_with_output(["mktemp", "/tmp/tmp.XXXXXX.yaml"])[1].strip())
+
     if host:
         dry_run_info(logger, f"Uploading output to host {host}, directory: {target}")
         if not DRY_RUN:
@@ -22,6 +38,8 @@ def copy(source, target, host=None) -> None:
         dry_run_info(logger, f"Copying {source} to directory: {target}")
         if not DRY_RUN:
             shutil.copy(source, target)
+
+    return target
 
 
 def mkdir(dir: Path, host=None) -> None:

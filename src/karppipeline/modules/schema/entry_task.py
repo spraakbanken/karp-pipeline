@@ -1,7 +1,6 @@
 import importlib
 import importlib.util
 import logging
-from pathlib import Path
 from types import ModuleType
 from typing import Any, Iterator, Callable, Self
 import unicodedata
@@ -22,9 +21,9 @@ class ConverterImporter:
     used twice in the same resource.
     """
 
-    def __init__(self, config):
+    def __init__(self, config: PipelineConfig):
         self.config = config
-        self.loaded_files: dict[Path, ModuleType] = {}
+        self.loaded_mods: list[ModuleType] = []
         self.converters: dict[str, dict[str, Callable]] = {}
 
     def get_converter(self: Self, converter: str) -> dict[str, Callable[[object], object]]:
@@ -36,23 +35,24 @@ class ConverterImporter:
             [module, func] = ref
             mod = importlib.import_module("karppipeline.converters." + module)
         else:
-            plugin_path = Path(self.config.workdir, "plugins")
-            file_path = str(plugin_path / "converters.py")
-            if file_path in self.loaded_files:
-                mod = self.loaded_files[file_path]
-            else:
-                spec = importlib.util.spec_from_file_location("plugin", file_path)
-                if not spec or not spec.loader:
-                    raise PipelineException(
-                        "Resource is trying to use an unqualified function (X:Z as Y), but no code file was found for resource."
-                    )
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
+            if not self.loaded_mods:
+                # plugin directories are inherited like configuration parents. load all the plugins found at this point.
+                for plugin_file_path in self.config.plugin_files:
+                    spec = importlib.util.spec_from_file_location("plugin", plugin_file_path)
+                    if not spec or not spec.loader:
+                        raise PipelineException(
+                            "Resource is trying to use an unqualified function (X:Z as Y), but no code file was found for resource."
+                        )
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    self.loaded_mods.append(mod)
 
             func = ref[0]
-            if not hasattr(mod, func):
+            for mod in self.loaded_mods:
+                if hasattr(mod, func):
+                    break
+            else:
                 raise PipelineException(f"function {func} not found")
-
         func_obj = getattr(mod, func)
 
         update_schema = getattr(mod, func + "_update_schema")

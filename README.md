@@ -244,10 +244,10 @@ def to_ud(_, pos):
 And to use this in a field: `my_pos:mymod.to_ud as upos`
 
 Converters can be implemented outside the codebase by adding a
-directory called `plugins` to the resource directory, with a Python file
-called `converters.py` and by adding the used methods within. When adding converters this way, the field setting should only contain
+directory called `plugins` to the resource directory. To this directory
+Python code files can be added with the same methods as described before.
+When adding converters this way, the export field setting should only contain
 the function name and not module name (`<field name>:<converter> as <new_field_name>`).
-There is no way to reuse a converter in many resources except copying.
 
 ### Built-in converters
 

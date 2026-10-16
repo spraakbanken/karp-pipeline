@@ -20,13 +20,16 @@ __all__ = ["ConfigHandle", "load_config", "find_configs"]
 class ConfigHandle:
     workdir: Path
     config_dict: Map
+    plugin_files: list[Path]
     parents: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
 
 def load_config(config_handle: ConfigHandle, ignore_validation=False) -> PipelineConfig:
     config_dict = config_handle.config_dict
+    config_dict["plugin_files"] = config_handle.plugin_files
     config_dict["workdir"] = config_handle.workdir
+
     if ignore_validation:
         return PipelineConfig.model_construct(**config_dict)
     else:
@@ -44,6 +47,10 @@ def _find_configs() -> Iterator[ConfigHandle]:
     one level above for another config.yaml (recursively). If a config.yaml
     has root: true, the recursion stops and the final parent is resolved.
 
+    In the same directory as the parents configs there may be another directory
+    called "plugins". All Python files from these directories will be collected
+    and loaded.
+
     TODO:
     - use parent_config_paths for more than debugging, which will make sure
       that the paths printed by karp-pipeline print-config-tree will be the
@@ -51,22 +58,30 @@ def _find_configs() -> Iterator[ConfigHandle]:
     """
 
     @functools.lru_cache
-    def read_config(dir_path: Path) -> Map | None:
+    def read_config(dir_path: Path) -> tuple[Map | None, set[Path]]:
         config_path = dir_path / "config.yaml"
         if config_path.exists():
+            if (dir_path / "plugins").exists():
+                plugin_paths: set[Path] = set((dir_path / "plugins").glob("*.py"))
+            else:
+                plugin_paths = set()
+
             with open(config_path) as fp:
                 logger.info(f"Reading {config_path}")
                 try:
-                    return yaml.load(fp)
+                    return yaml.load(fp), plugin_paths
                 except MarkedYAMLError as e:
                     raise PipelineException(f"Could not parse YAML: {e.problem}{e.problem_mark}")
                 except YAMLError:
                     raise PipelineException(f"Could not parse YAML, check file: {config_path}")
-        return None
+        return None, set()
 
     warnings = []
     start_path = Path(os.getcwd())
-    config = read_config(start_path)
+    config, tmp_plugin_paths = read_config(start_path)
+
+    plugin_paths: list[set[Path]] = []
+    plugin_paths.append(tmp_plugin_paths)
 
     if not config:
         raise PipelineException(f"config: could not find a config in {start_path}")
@@ -78,19 +93,21 @@ def _find_configs() -> Iterator[ConfigHandle]:
     while config and not config.get("root", False):
         parent_config_paths.append(path)
         parent_configs.append(config)
+        plugin_paths.append(tmp_plugin_paths)
         # recusively find all parents until there is no config.yaml OR it contains root: true OR it contains parent: <path>
         if config and "parent" in config:
             # if parent is set on config, just use it and stop iterating
             path = Path(cast(str, config["parent"]))
             # set config to parent_config
-            config = read_config(Path(cast(str, path)).parent)
+            config, tmp_plugin_paths = read_config(Path(cast(str, path)).parent)
             if not config:
                 raise PipelineException(f"config: could not find parent ({path})")
+            plugin_paths.append(tmp_plugin_paths)
             if "parent" in config:
                 warnings.append("A parent config contains `parent`-key which is not supported and will be ignored.")
             break
         path = path / ".."
-        config = read_config(path)
+        config, tmp_plugin_paths = read_config(path)
     if config:
         parent_config_paths.append(path)
         parent_configs.append(config)
@@ -116,16 +133,18 @@ def _find_configs() -> Iterator[ConfigHandle]:
         warnings = []
         for dir in path.iterdir():
             if dir.is_dir():
-                config = read_config(dir)
+                config, tmp_plugin_paths = read_config(dir)
                 if config:
+                    plugin_paths.append(tmp_plugin_paths)
                     if "parent" in config:
                         parent_path = Path(cast(str, config["parent"])).parent
                         if not parent_path.is_absolute():
                             parent_path = dir / parent_path
                         parent_config_paths = [parent_path]
-                        other_parent = read_config(parent_path)
+                        other_parent, tmp_plugin_paths = read_config(parent_path)
                         if not other_parent:
                             raise PipelineException(f"config: could not find parent ({path})")
+                        plugin_paths.append(tmp_plugin_paths)
                         if "parent" in other_parent:
                             warnings.append(
                                 "A parent config contains `parent`-key which is not supported and will be ignored."
@@ -155,6 +174,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
         child.pop("parent", None)
         yield ConfigHandle(
             workdir=child["workdir"],
+            plugin_files=list({path for ls in plugin_paths for path in ls}),
             config_dict=child,
             parents=[str(path.absolute().resolve()) for path in parent_config_paths],
             warnings=warnings,

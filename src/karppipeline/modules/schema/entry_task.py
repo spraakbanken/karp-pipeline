@@ -2,7 +2,8 @@ import importlib
 import importlib.util
 import logging
 from pathlib import Path
-from typing import Any, Iterator, Callable
+from types import ModuleType
+from typing import Any, Iterator, Callable, Self
 import unicodedata
 from karppipeline.common import PipelineException
 from karppipeline.models import EntrySchema, PipelineConfig, Entry, InferredField
@@ -10,34 +11,62 @@ from karppipeline.models import EntrySchema, PipelineConfig, Entry, InferredFiel
 logger = logging.getLogger(__name__)
 
 
-def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Callable[[Entry | None], Entry | None]:
+class ConverterImporter:
     """
-    Check if config contains any renames or conversions
-    Update the entry schema and each entry with this information
+    Config files can use converters for fields.
+
+    If the converter Y is in karppipeline.converters.X, `export.fields` uses `old_field_name:X.Y as new_field_name`
+    If the converter Y is in a plugin directory for the resource, `export.fields` uses `old_field_name:Y as new_field_name`
+
+    The class makes sure that modules are only imported once and cashes some ready converters in case the same converter is
+    used twice in the same resource.
     """
 
-    def _get_converter(converter: str) -> dict[str, Callable[[object], object]]:
+    def __init__(self, config):
+        self.config = config
+        self.loaded_files: dict[Path, ModuleType] = {}
+        self.converters: dict[str, dict[str, Callable]] = {}
+
+    def get_converter(self: Self, converter: str) -> dict[str, Callable[[object], object]]:
+        if converter in self.converters:
+            return self.converters[converter]
+
         ref = converter.split(".")
         if len(ref) == 2:
             [module, func] = ref
             mod = importlib.import_module("karppipeline.converters." + module)
         else:
-            plugin_path = Path(config.workdir, "plugins")
+            plugin_path = Path(self.config.workdir, "plugins")
+            file_path = str(plugin_path / "converters.py")
+            if file_path in self.loaded_files:
+                mod = self.loaded_files[file_path]
+            else:
+                spec = importlib.util.spec_from_file_location("plugin", file_path)
+                if not spec or not spec.loader:
+                    raise PipelineException(
+                        "Resource is trying to use an unqualified function (X:Z as Y), but no code file was found for resource."
+                    )
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+
             func = ref[0]
-            spec = importlib.util.spec_from_file_location("plugin", str(plugin_path / "converters.py"))
-            if not spec or not spec.loader:
-                raise PipelineException(
-                    "Resource is trying to use an unqualified function (X:Z as Y), but no code file was found for resource."
-                )
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
             if not hasattr(mod, func):
                 raise PipelineException(f"function {func} not found")
 
         func_obj = getattr(mod, func)
 
         update_schema = getattr(mod, func + "_update_schema")
-        return {"update_schema": update_schema, "convert": func_obj}
+        converter_obj = {"update_schema": update_schema, "convert": func_obj}
+        self.converters[converter] = converter_obj
+        return converter_obj
+
+
+def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Callable[[Entry | None], Entry | None]:
+    """
+    Check if config contains any renames or conversions
+    Update the entry schema and each entry with this information
+    """
+    converter_importer = ConverterImporter(config)
 
     add_all = False
     converted_fields = []
@@ -90,7 +119,7 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
                 entry_schema[field.target] = field_copy
         # pre-import each converter
         if field.converter:
-            converters[field.converter] = _get_converter(field.converter)
+            converters[field.converter] = converter_importer.get_converter(field.converter)
             entry_schema[field.target] = converters[field.converter]["update_schema"](entry_schema[field.target])
 
     def _convert_value(converter: str | None, val: Any) -> Any:

@@ -1,19 +1,19 @@
 import logging
 from pathlib import Path
-from typing import Any, cast
 
 from karppipeline.common import PipelineException, create_output_dir, get_output_dir
 from karppipeline.models import NonEmptyMultiLang, PipelineConfig
 from karppipeline.modules.karps_config import MODULE_NAME as KARPS_MODULE_NAME
 from karppipeline.modules.karps.models import KarpsExportConfig
 from karppipeline.modules.mink.mink_api import MinkAPI
+from karppipeline.modules.mink.models import InstallOption, MinkConfig
 from karppipeline.util import yaml
 from karppipeline.util import json
 
 logger = logging.getLogger(__name__)
 
 
-def mink_install(config: PipelineConfig, mink_api: MinkAPI):
+def mink_create(config: PipelineConfig, mink_config: MinkConfig, mink_api: MinkAPI) -> tuple[bool, str]:
     resource_id = _get_mink_resource_id(config) or config.resource_id
     # call API to create Mink resource
     actual_resource_id = mink_api.create_lexicon(resource_id)
@@ -28,10 +28,9 @@ def mink_install(config: PipelineConfig, mink_api: MinkAPI):
         logger.info(f"Using preconfigured Mink resource with id: {actual_resource_id}")
 
     # generate mink karp-pipeline config
-    mink_config = config.modules["mink"]
     karps_config = config.modules[KARPS_MODULE_NAME]
-    if "karps" in mink_config:
-        karps_config = cast(dict[str, Any], mink_config.get(KARPS_MODULE_NAME, {}))
+    if mink_config.karps:
+        karps_config = mink_config.karps
     elif not karps_config:
         raise PipelineException("Either configure mink.karps or karps module to make Mink installation work.")
     if "link" not in karps_config:
@@ -48,6 +47,7 @@ def mink_install(config: PipelineConfig, mink_api: MinkAPI):
         "name": name.model_dump(),
         "description": description.model_dump(),
         "karps": karps_config_model_instance.model_dump(exclude_defaults=True, exclude_unset=True),
+        "karp_red": {"replace": True},
         "parent": "/home/fksb/karp-config/config.yaml",
     }
 
@@ -65,14 +65,22 @@ def mink_install(config: PipelineConfig, mink_api: MinkAPI):
     mink_api.upload_config(mink_config_text)
 
     logger.info("Running Karp pipeline via Mink.")
-    pipeline_success = mink_api.run_pipeline()
-    if pipeline_success:
-        logger.info("Installing into Karp's search mode via Mink.")
-        install_success = mink_api.install_karp_s()
-        if install_success:
-            logger.info(
-                f"Resource should be available at https://spraakbanken.gu.se/karp/?resources={actual_resource_id}"
-            )
+    return mink_api.run_pipeline(), actual_resource_id
+
+
+def mink_install(resource_id: str, mink_config: MinkConfig, mink_api: MinkAPI, target: InstallOption):
+    if target not in mink_config.install:
+        return
+
+    logger.info(f"Installing into {target.pretty_str()} mode via Mink.")
+    install_success = mink_api.install_karp_system(target)
+    if install_success:
+        if target == InstallOption.KARP_S:
+            url = f"https://spraakbanken.gu.se/karp/?resources={resource_id}"
+        else:
+            url = f"https://spraakbanken4.it.gu.se/karp/v8-dev_1/query/{resource_id}"
+
+        logger.info(f"Resource should be available at {url}")
 
 
 def mink_uninstall(config: PipelineConfig, mink_api: MinkAPI) -> None:

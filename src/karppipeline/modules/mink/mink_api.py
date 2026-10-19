@@ -7,11 +7,12 @@ import urllib.parse
 import uuid
 from karppipeline.common import PipelineException
 from karppipeline.execution.install import DRY_RUN
+from karppipeline.modules.mink.models import InstallOption
 import karppipeline.util.json as json
 
 logger = logging.getLogger(__name__)
 
-BASE_URL: Final[str] = "https://ws.spraakbanken.gu.se/ws/mink/v3"
+BASE_URL: Final[str] = "https://ws.spraakbanken.gu.se/ws/mink/dev"
 
 
 class MinkAPI:
@@ -148,15 +149,20 @@ class MinkAPI:
             self._check_status()
             return True
 
-    def install_karp_s(self) -> bool:
+    def install_karp_system(self, target) -> bool:
         """
-        Run Karp-s installation in the instance configured by Mink server. Blocks until done or timeouts.
+        Run Karp-s/Karp red installation in the instance configured by Mink server. Blocks until done or timeouts.
         returns: True if a request with a "job_done" was found within timeout, else False
         """
-        url = f"lexicon/karps/install/{self.resource_id}"
+        # target_url_part is the name in Mink!
+        if target == InstallOption.KARP_S:
+            target_url_part = "karps"
+        else:
+            target_url_part = "karpred"
+        url = f"lexicon/{target_url_part}/install/{self.resource_id}"
         resp_obj = self._execute(url, method="PUT", check=False)
         if resp_obj["status"] != "success":
-            logger.error("Failed to install resource in Karp search via Mink")
+            logger.error(f"Failed to install resource in {target.pretty_str()} via Mink")
             return False
         else:
             self._check_status()

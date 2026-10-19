@@ -4,8 +4,13 @@ from typing import Final, cast
 from karppipeline.common import PipelineException
 from karppipeline.execution.dependency import Dependency
 from karppipeline.models import PipelineConfig
-from karppipeline.modules.mink.install import mink_install, mink_uninstall
+from karppipeline.modules.mink.install import (
+    mink_create,
+    mink_install,
+    mink_uninstall,
+)
 from karppipeline.modules.mink.mink_api import MinkAPI
+from karppipeline.modules.mink.models import InstallOption, MinkConfig
 
 
 """
@@ -39,6 +44,14 @@ def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
 
     mink_api = MinkAPI(api_key)
     if not uninstall:
-        mink_install(config, mink_api)
+        mink_config_dict = config.modules["mink"]
+        mink_config = MinkConfig.model_validate(mink_config_dict)
+
+        # creates resource (if needed) and runs pipeline
+        pipeline_success, actual_resource_id = mink_create(config, mink_config, mink_api)
+        if pipeline_success:
+            mink_install(actual_resource_id, mink_config, mink_api, InstallOption.KARP_S)
+            mink_install(actual_resource_id, mink_config, mink_api, InstallOption.KARP_RED)
     else:
+        # mink uninstall also uninstalls the resource from Karp red / Karp s if needed
         mink_uninstall(config, mink_api)

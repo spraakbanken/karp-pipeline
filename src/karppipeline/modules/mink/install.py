@@ -72,7 +72,7 @@ def mink_install(resource_id: str, mink_config: MinkConfig, mink_api: MinkAPI, t
     if target not in mink_config.install:
         return
 
-    logger.info(f"Installing into {target.pretty_str()} mode via Mink.")
+    logger.info(f"Installing into {target.pretty_str()} via Mink.")
     install_success = mink_api.install_karp_system(target)
     if install_success:
         if target == InstallOption.KARP_S:

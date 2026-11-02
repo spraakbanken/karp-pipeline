@@ -45,13 +45,21 @@ def _check_or_create_field(pipeline_config: PipelineConfig, schema, key, values)
     """
     field: InferredField = schema.get(key)
 
-    collection = False
+    
+
     if not isinstance(values, list):
-        values = (values,)
-    elif field and not field.collection:
-        raise PipelineException(f'Mismatch, field: "{key}". Pipeline does not except a collection.')
+        if field and field.collection:
+            if values is not None:
+                raise PipelineException(f'Mismatch, field: "{key}". Pipeline excepts a collection.')
+            values = ()
+        else:
+            values = (values,)
+        collection = False
     else:
+        if field and not field.collection:
+            raise PipelineException(f'Mismatch, field: "{key}". Pipeline does not except a collection.')
         collection = True
+
     for value in values:
         if not isinstance(value, dict):
             if value is None:

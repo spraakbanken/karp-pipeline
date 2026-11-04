@@ -1,48 +1,6 @@
-import logging
-from typing import Any, cast
-from karppipeline.execution.dependency import Dependency
-from karppipeline.models import Entry, PipelineConfig
-
-from karppipeline.common import PipelineException, create_output_dir
-from karppipeline.util import json
-
-__all__ = ["export", "dependencies"]
-logger = logging.getLogger(__name__)
-
-dependencies = [Dependency("jsonl")]
-
-
-def export(config: PipelineConfig, _, **_kwargs):
-    """
-    Writes each entry to file
-    """
-
-    def json_dump():
-        with open(create_output_dir(config.workdir) / f"{config.resource_id}.flatter.jsonl", "w") as fp:
-            flattened_entry = None
-            while True:
-                entry = yield flattened_entry
-                if not entry:
-                    break
-                flattened_entry = flatten(entry)
-                fp.write(json.dumps(flattened_entry) + "\n")
-
-    gen = json_dump()
-    next(gen)
-
-    def task(entry: Entry | None, /) -> Entry | None:
-        if not entry:
-            return None
-        logger.debug("jsonl entry task")
-        new_entry = gen.send(entry)
-        return new_entry
-
-    return task
-
-
-def flatten(entry: Entry) -> Entry:
-    inner = recursive_flatten(cast(Any, entry))
-    return dict(inner)
+from typing import Any, Iterable
+from karppipeline.common import PipelineException
+from karppipeline.models import EntrySchema
 
 
 def recursive_flatten(
@@ -77,3 +35,38 @@ def recursive_flatten(
         res.append((None, val))
 
     return res
+
+
+def identity(x):
+    return x
+
+
+def flatten_entry_schema(entry_schema: EntrySchema):
+    """
+    Transforms entry schema into a "flat" schema
+    """
+    new_entry_schema = {}
+    for key, outer_field in entry_schema.items():
+        if outer_field.type == "object":
+            inner_schema = flatten_entry_schema(outer_field.fields)
+            for inner_key, field in inner_schema.items():
+                new_name = key + "." + inner_key
+                field.name = new_name
+                new_entry_schema[new_name] = field
+        else:
+            new_entry_schema[key] = outer_field
+    return new_entry_schema
+
+
+def flatten_order_tree(fields: Iterable[tuple[str, Any]], target: list[str], path=""):
+    for field_name, inner_fields in fields:
+        if inner_fields:
+            flatten_order_tree(inner_fields, target, path=path + field_name + ".")
+        else:
+            target.append(path + field_name)
+
+
+def flatten_source_order(source_order: list[tuple[str, list]]) -> list[str]:
+    flat_source_order = []
+    flatten_order_tree(source_order, flat_source_order)
+    return flat_source_order

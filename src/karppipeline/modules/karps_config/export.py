@@ -1,53 +1,11 @@
 import time
-from typing import Any, Callable, Iterable, Iterator, Mapping
+from typing import Iterable, Iterator, Mapping
 
 
 from karppipeline.common import PipelineException, create_output_dir
 from karppipeline.modules.karps.models import KarpsExportConfig
-from karppipeline.models import ConfiguredField, EntrySchema, PipelineConfig
+from karppipeline.models import EntrySchema, PipelineConfig
 from karppipeline.util import yaml
-
-
-def identity(x):
-    return x
-
-
-def flatten_entry_schema(entry_schema: EntrySchema, field_collector: Callable = identity):
-    """
-    Transforms entry schema into a "flat" schema
-    """
-    new_entry_schema = {}
-    for key, outer_field in entry_schema.items():
-        if outer_field.type == "object":
-            inner_schema = flatten_entry_schema(field_collector(outer_field.fields), field_collector)
-            for inner_key, field in inner_schema.items():
-                new_name = key + "." + inner_key
-                field.name = new_name
-                new_entry_schema[new_name] = field
-        else:
-            new_entry_schema[key] = outer_field
-    return new_entry_schema
-
-
-def flatten_pipeline_fields(fields) -> dict[str, ConfiguredField]:
-    def field_collector(fields):
-        return {field.name: field for field in fields}
-
-    return flatten_entry_schema(field_collector(fields), field_collector)
-
-
-def flatten_order_tree(fields: Iterable[tuple[str, Any]], target: list[str], path=""):
-    for field_name, inner_fields in fields:
-        if inner_fields:
-            flatten_order_tree(inner_fields, target, path=path + field_name + ".")
-        else:
-            target.append(path + field_name)
-
-
-def flatten_source_order(source_order: list[tuple[str, list]]) -> list[str]:
-    flat_source_order = []
-    flatten_order_tree(source_order, flat_source_order)
-    return flat_source_order
 
 
 def create_karps_backend_config(
@@ -62,7 +20,7 @@ def create_karps_backend_config(
 
     fields: list[dict[str, object]] = []
     # collected_categories = module_data["generate_categorical_values"]
-    configured_fields = flatten_pipeline_fields(pipeline_config.fields)
+    configured_fields = {field.name: field for field in pipeline_config.fields}
     for field in entry_schema.values():
         field_dict = field.asdict()
         # TODO make sure this works for sub-fields
@@ -103,15 +61,15 @@ def create_karps_backend_config(
         )
 
     def order_fields(fields: list[str]) -> Iterable[str]:
-        flatten_pipeline_fields = [field.name for field in configured_fields.values()]
+        configured_field_names = [field.name for field in configured_fields.values()]
 
         # initialize main sort order
-        order_map = {name: i for i, name in enumerate(flatten_pipeline_fields)}
+        order_map = {name: i for i, name in enumerate(configured_field_names)}
 
         # order by apperance in input objects for non-configured fields
         for i, name in enumerate(source_order):
             if name not in order_map:
-                order_map[name] = len(flatten_pipeline_fields) + i
+                order_map[name] = len(configured_field_names) + i
 
         # if a field is not in order map it means it is not configured and also generated
         sorted_keys = sorted(fields, key=lambda x: order_map.get(x, len(order_map)))

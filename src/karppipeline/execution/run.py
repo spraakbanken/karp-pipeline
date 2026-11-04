@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
     resolved_cmds, mods = resolve_commands(config, subcommand, config.export.default)
 
-    entry_tasks: list[Callable[[Entry | None], Entry]] = []
+    entry_tasks: list[Callable[[Entry | None], Entry | list[Entry]]] = []
     module_data = {}
     for cmd in resolved_cmds:
         mod = mods[cmd]
@@ -28,6 +28,7 @@ def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
                 else:
                     # add dependency so we don't have to look for the load method again
                     module_data[dependency_name] = None
+
         entry_task = mod.export(config, module_data, instance=cmd)
 
         # callables added to entry_tasks will be called for each entry
@@ -36,9 +37,18 @@ def run(config: PipelineConfig, subcommand: list[str] | None = None) -> None:
 
     # for each entry, do the needed tasks
     for entry in read_data(config)[2]:
-        updated_entry = entry
+        updated_entries = (entry,)
         for task in entry_tasks:
-            updated_entry = task(updated_entry)
+            copy = list(updated_entries)
+            # if a task creates additional entries they will collected in updated_entries
+            # and then used for the next task
+            updated_entries = []
+            for inner in copy:
+                result = task(inner)
+                if isinstance(result, list):
+                    updated_entries.extend(result)
+                else:
+                    updated_entries.append(result)
 
     # sending None to all entry tasks to signal that no more entries are coming
     for task in entry_tasks:

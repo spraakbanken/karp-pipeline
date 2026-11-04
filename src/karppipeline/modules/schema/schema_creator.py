@@ -45,8 +45,6 @@ def _check_or_create_field(pipeline_config: PipelineConfig, schema, key, values)
     """
     field: InferredField = schema.get(key)
 
-    
-
     if not isinstance(values, list):
         if field and field.collection:
             if values is not None:

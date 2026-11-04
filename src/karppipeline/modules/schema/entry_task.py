@@ -5,7 +5,7 @@ from types import ModuleType
 from typing import Any, Iterator, Callable, Self
 import unicodedata
 from karppipeline.common import PipelineException
-from karppipeline.models import EntrySchema, PipelineConfig, Entry, InferredField
+from karppipeline.models import EntrySchema, ExportFieldConfig, PipelineConfig, Entry, InferredField
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,9 @@ class ConverterImporter:
         return converter_obj
 
 
-def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Callable[[Entry | None], Entry | None]:
+def get_entry_converter(
+    config: PipelineConfig, field_export: list[ExportFieldConfig], entry_schema: EntrySchema
+) -> Callable[[Entry | None], Entry | None]:
     """
     Check if config contains any renames or conversions
     Update the entry schema and each entry with this information
@@ -71,10 +73,10 @@ def get_entry_converter(config: PipelineConfig, entry_schema: EntrySchema) -> Ca
     add_all = False
     converted_fields = []
     converters = {}
-    if len(config.export.fields) == 0:
+    if len(field_export) == 0:
         # add all the fields from the source to the target if there are no field settings
         add_all = True
-    for field in config.export.fields:
+    for field in field_export:
         if field.root == "...":
             add_all = True
         else:

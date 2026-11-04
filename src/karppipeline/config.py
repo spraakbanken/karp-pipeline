@@ -62,7 +62,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
         config_path = dir_path / "config.yaml"
         if config_path.exists():
             if (dir_path / "plugins").exists():
-                plugin_paths: set[Path] = set((dir_path / "plugins").glob("*.py"))
+                plugin_paths: set[Path] = set((dir_path / "plugins/field_converter").glob("*.py"))
             else:
                 plugin_paths = set()
 

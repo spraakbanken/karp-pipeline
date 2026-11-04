@@ -23,7 +23,6 @@ MODULE_NAME: Final[str] = "karps"
 
 dependencies = [
     Dependency("karps_config"),
-    Dependency("flatter_jsonl"),
     Dependency("generate_categorical_values"),
 ]
 
@@ -55,7 +54,6 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
                 new_entry = {}
                 for key, val in entry.items():
                     new_entry[add_namespace_to_field(config.resource_id, key)] = val
-
             sql_gen.send(new_entry)
         except StopIteration:
             # if this happens, the entries are exhausted

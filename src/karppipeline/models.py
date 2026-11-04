@@ -255,6 +255,10 @@ class PipelineConfig(BaseModel):
     def modules(self) -> dict[str, dict[str, object]]:
         return self.__pydantic_extra__ or {}
 
+    @property
+    def plugin_dir(self) -> Path:
+        return self.workdir / "plugins"
+
     def get_field(self, field_name) -> ConfiguredField | None:
         return self._dict_fields.get(field_name)
 

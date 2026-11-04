@@ -25,7 +25,7 @@ def export(config: PipelineConfig, _, **_kwargs):
     entry_schema, source_order, [size] = pre_import_resource(config)
 
     # modifies entry_schema based on config and returns modification task for entries
-    entry_converter = get_entry_converter(config, entry_schema)
+    entry_converter = get_entry_converter(config, config.export.fields, entry_schema)
 
     # check that the inferred fields are the same as any configured fields
     compare_to_configured_fields(config, entry_schema)

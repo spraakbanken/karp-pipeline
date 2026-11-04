@@ -4,6 +4,7 @@ from typing import Callable, Final
 
 from karppipeline.common import PipelineException, create_output_dir
 from karppipeline.execution.dependency import Dependency
+from karppipeline.modules import datatransform
 import karppipeline.modules.karps_config.install as backend_install
 from karppipeline.modules.karps.models import (
     get_export_config,
@@ -12,6 +13,7 @@ from karppipeline.modules.karps.models import (
 from karppipeline.models import Entry, EntrySchema, MultiLang, PipelineConfig
 import karppipeline.modules.karps_config.export as backend_export
 from karppipeline.modules.karps.namespace import add_namespace_to_fields, add_namespace_to_schema
+from karppipeline.modules.schema.entry_task import get_entry_converter
 
 """
 generate Karp-s backend configuration
@@ -24,7 +26,7 @@ MODULE_NAME: Final[str] = "karps"
 
 dependencies = [
     Dependency("sbxmetadata", optional=True),
-    Dependency("schema"),
+    Dependency(datatransform.MODULE_NAME),
 ]
 
 
@@ -32,16 +34,17 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
     """
     Create configuration for Karp-s backend
     """
-    input_entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
-    entry_schema = backend_export.flatten_entry_schema(input_entry_schema)
-    source_order: list[str] = backend_export.flatten_source_order(module_data["schema"]["source_order"])
-    size: int = module_data["schema"]["size"]
+    entry_schema: EntrySchema = module_data[datatransform.MODULE_NAME]["entry_schema"]
+    source_order: list[str] = module_data[datatransform.MODULE_NAME]["source_order"]
 
     create_output_dir(config.workdir)
     karps_workdir = create_output_dir(config.workdir) / "karps"
     karps_workdir.mkdir(exist_ok=True)
 
     module_config = get_export_config(config, instance)
+
+    # updates entry_schema in place
+    entry_converter = get_entry_converter(config, module_config.export_fields, entry_schema)
 
     if config.protected_metadata:
         # if a resource uses protected_metadata: true, we will use the resource ID as a namespace
@@ -68,6 +71,8 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
     elif not description:
         description = MultiLang.create("").model_dump()
 
+    karps_size = [0]
+
     def task(entry: Entry | None) -> Entry | None:
         """
         when all entries are processed, create the backend config
@@ -75,9 +80,11 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
         logger.debug("karps entry task")
         if entry is None:
             backend_export.create_karps_backend_config(
-                config, module_config, name, description, modified_entry_schema, modified_source_order, size
+                config, module_config, name, description, modified_entry_schema, modified_source_order, karps_size[0]
             )
-        return entry
+            return None
+        karps_size[0] += 1
+        return entry_converter(entry)
 
     # save the maybe namespaced entry schema for usage in karps_data
     with open(_get_data_path(config), "wb") as fp:

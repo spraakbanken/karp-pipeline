@@ -1,7 +1,7 @@
 from pathlib import Path
 from pydantic import BaseModel
 
-from karppipeline.models import MultiLang
+from karppipeline.models import ExportFieldConfig, MultiLang
 from karppipeline.modules.karps.namespace import add_namespace_to_field, add_namespace_to_fields
 
 
@@ -32,6 +32,7 @@ class KarpsExportConfig(BaseModel):
     # give either primary or secondary, depending on which list is easiest to populate. the other list will be populated automatically
     primary: list[str] = []
     secondary: list[str] = []
+    export_fields: list[ExportFieldConfig] = []
 
 
 class KarpsInstallConfig(KarpsExportConfig):

@@ -82,7 +82,7 @@ def create_karps_sql(
                     elif field.type == "bool":
                         column_type = "BOOLEAN"
                     else:
-                        raise PipelineException(f"unknown column type {field.type}")
+                        raise PipelineException(f"unknown column type in schema: {field.type}")
                     fields.append(f"`{field_name}` {column_type}")
             return tables, fields, indices
 
@@ -129,7 +129,7 @@ def create_karps_sql(
                 elif isinstance(val, dict):
                     return ",".join([format_value(v) for v in val.values()])
                 else:
-                    raise PipelineException(f"unknown column type {type(val)}")
+                    raise PipelineException(f"unknown column type  in data: {type(val)}")
 
             def sqlify_values(entry):
                 """

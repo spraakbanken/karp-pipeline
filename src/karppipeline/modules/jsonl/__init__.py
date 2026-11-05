@@ -16,22 +16,14 @@ def export(config: PipelineConfig, _, **_kwargs):
     Writes each entry to file
     """
 
-    def json_dump():
-        with open(create_output_dir(config.workdir) / f"{config.resource_id}.jsonl", "w") as fp:
-            while True:
-                entry = yield
-                if not entry:
-                    break
-                fp.write(json.dumps(entry) + "\n")
-
-    gen = json_dump()
-    next(gen)
+    fp = open(create_output_dir(config.workdir) / f"{config.resource_id}.jsonl", "w")
 
     def task(entry: Entry | None, /) -> Entry | None:
         if not entry:
+            fp.close()
             return None
         logger.debug("jsonl entry task")
-        gen.send(entry)
+        fp.write(json.dumps(entry) + "\n")
         return entry
 
     return task

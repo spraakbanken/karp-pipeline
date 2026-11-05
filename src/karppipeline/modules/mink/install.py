@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 def mink_create(config: PipelineConfig, mink_config: MinkConfig, mink_api: MinkAPI) -> tuple[bool, str]:
+    """
+    1. Creates a Mink resource (unless it exists)
+    2. Uploads data
+    3. Uploads configuration
+    4. Starts pipeline and waits until it is done
+    """
     resource_id = _get_mink_resource_id(config) or config.resource_id
     # call API to create Mink resource
     actual_resource_id = mink_api.create_lexicon(resource_id)

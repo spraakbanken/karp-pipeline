@@ -46,25 +46,14 @@ def add_config(pipeline_config: PipelineConfig, karps_config: KarpsInstallConfig
     # ensure that the karps incoming config directory exists
     fileops.mkdir(karps_config_dir, host=host)
 
+    resource_files = ["resource.yaml", "fields.yaml", "global.yaml"]
     resource_dir = karps_config_dir / resource_id
-    resource_file_path = resource_dir / "resource.yaml"
-    resource_fields_file_path = resource_dir / "fields.yaml"
-    resource_global_file_path = resource_dir / "global.yaml"
-    _rm_files_and_replace_parent(
-        resource_dir, [resource_file_path, resource_fields_file_path, resource_global_file_path], host=host
-    )
+    _rm_files_and_replace_parent(resource_dir, [resource_dir / file for file in resource_files], host=host)
 
     # copy the needed files to the backends config dir
-    resource_config = output_dir / "resource.yaml"
-    fields_config = output_dir / "fields.yaml"
-    global_config = output_dir / "global.yaml"
-
-    for source, target in [
-        (resource_config, resource_file_path),
-        (fields_config, resource_fields_file_path),
-        (global_config, resource_global_file_path),
-    ]:
-        fileops.copy(source, target, host=host)
+    for file in resource_files:
+        source = output_dir / file
+        fileops.copy(source, resource_dir, host=host)
 
     # run the backend cli to process the added files
     cmd = f"{karps_config.cli_path} add {resource_id}"

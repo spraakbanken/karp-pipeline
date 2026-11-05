@@ -1,4 +1,4 @@
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, Final
 import orjson
 
 from pydantic import BaseModel
@@ -33,8 +33,17 @@ def load_array(data: bytes) -> list[Any]:
     return orjson.loads(data)
 
 
+pretty_kwargs: Final[dict[str, int]] = {"option": orjson.OPT_INDENT_2}
+
+
 def _dumps(obj: object, pretty=False) -> bytes:
-    kwargs = {}
     if pretty:
-        kwargs["option"] = orjson.OPT_INDENT_2
-    return orjson.dumps(obj, default=custom_serializer, **kwargs)
+        return orjson.dumps(obj, default=custom_serializer, **pretty_kwargs)
+    return orjson.dumps(obj, default=custom_serializer)
+
+
+def dump_with_newline(obj: object, fp: BinaryIO) -> None:
+    """
+    Dump and write directory to fp, with a trailing newline (JSONL)
+    """
+    fp.write(orjson.dumps(obj, option=orjson.OPT_APPEND_NEWLINE))

@@ -73,6 +73,7 @@ def get_entry_converter(
     add_all = False
     converted_fields = []
     converters = {}
+    input_schema = dict(entry_schema)
     if len(field_export) == 0:
         # add all the fields from the source to the target if there are no field settings
         add_all = True
@@ -104,7 +105,10 @@ def get_entry_converter(
                 entry_schema[field.target] = InferredField(name=field.target, type="str")
             else:
                 # TODO here we copy the schema from source field, but length may be different
-                field_copy = entry_schema[field.name].copy()
+                field_schema = input_schema.get(field.name, entry_schema.get(field.name))
+                if not field_schema:
+                    raise PipelineException(f"Field not found {field.name}")
+                field_copy = field_schema.copy()
                 field_copy.name = field.target
 
                 # check if target field is configured as categorical

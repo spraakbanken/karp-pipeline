@@ -215,13 +215,18 @@ class ExportFieldConfig(RootModel[str]):
     @property
     def target(self) -> str:
         m = CONVERTER_PATTERN.fullmatch(self.root)
-        return m.group("target") if m else self.name
+        if m and (target := m.group("target")):
+            return target
+        elif self.converter:
+            raise PipelineException(f"Must set target ('as <field name>') for export field '{self.root}'")
+        else:
+            return self.name
 
 
 class ExportConfig(BaseModel):
     # default exporters
-    default: list[str] = []
-    fields: list[ExportFieldConfig] = []
+    default: list[str] = field(default_factory=list)
+    fields: list[ExportFieldConfig] = field(default_factory=list)
 
 
 class PipelineConfig(BaseModel):
@@ -238,7 +243,7 @@ class PipelineConfig(BaseModel):
     import_settings: Mapping[str, object] = Field(alias="import", default={})
     # main field list, master order and configuration, new fields may be added or aliased to existing fields
     # entry_word is not in this list and is always the first element, wether used directly or as alias
-    fields: list[ConfiguredField]
+    fields: list[ConfiguredField] = field(default_factory=list)
     workdir: Path
     # file_path = str(plugin_path / "converters.py")
     plugin_files: list[Path]

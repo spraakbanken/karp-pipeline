@@ -90,7 +90,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
     # useful for debugging
     parent_config_paths: list[Path] = []
     path = start_path
-    while config and not config.get("root", False):
+    while config and not config.pop("root", False):
         parent_config_paths.append(path)
         parent_configs.append(config)
         plugin_paths.append(tmp_plugin_paths)

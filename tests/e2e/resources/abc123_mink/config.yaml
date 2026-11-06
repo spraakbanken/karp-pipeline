@@ -1,0 +1,34 @@
+root: true
+resource_id: abc123
+protected_metadata: true
+name: resource name
+description: resource description
+export:
+  default:
+    - karps
+    - karp_red
+    - sbxrepo
+karps:
+  entry_word:
+    field: baseform
+    description:
+      swe: grundform
+      eng: baseform
+  link: "test"
+sbxrepo:
+  metadata:
+    yaml_export_path: /dev/null
+    schema: https://raw.githubusercontent.com/spraakbanken/metadata/refs/heads/main/schema/metadata.json
+    fallbacks:
+      origin: sbx
+      language_codes:
+        - swe
+      contact_info:
+        name: Markus Forsberg
+        email: sb-info@svenska.gu.se
+        affiliation:
+          organization: Språkbanken
+          email: sb-info@svenska.gu.se
+  data:
+    interface_url_template: "https://spraakbanken.gu.se/karp/?resources={resource_id}"
+    download_url_template: "https://spraakbanken.gu.se/resurser/data/karp/{resource_id}.jsonl"

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from functools import cached_property
-import glob
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,7 +26,7 @@ class TestResource:
         else:
             shutil.copytree(f"tests/e2e/resources/{self.resource_id}", dir, dirs_exist_ok=True)
         if self.custom_datatransform:
-            shutil.copytree(f"tests/e2e/plugins", dir / "plugins")
+            shutil.copytree("tests/e2e/plugins", dir / "plugins")
         return dir
 
     @property
@@ -93,9 +92,8 @@ def test_plugin_data_converter(resource):
 
     # but jsonl and repo should still have original number
     with open(resource.data_path) as fp:
-            assert len(fp.readlines()) == 10
+        assert len(fp.readlines()) == 10
     assert _count_entries_metadata_file(resource) == 10
-
 
 
 @pytest.mark.parametrize("resource", [{"protected_metadata": True}], indirect=True)

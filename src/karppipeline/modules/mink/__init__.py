@@ -39,10 +39,11 @@ def export(*_args, **_kwargs):
 def install(config: PipelineConfig, uninstall=False, instance=MODULE_NAME):
     mink_config = config.modules[instance]
     api_key: str = cast(str, mink_config.get("api_key", ""))
-    if not api_key:
+    base_url: str = cast(str, mink_config.get("base_url", ""))
+    if not (api_key and base_url):
         raise PipelineException("Cannot use the Mink module without adding mink.api_key.")
 
-    mink_api = MinkAPI(api_key)
+    mink_api = MinkAPI(base_url, api_key)
     if not uninstall:
         mink_config_dict = config.modules["mink"]
         mink_config = MinkConfig.model_validate(mink_config_dict)

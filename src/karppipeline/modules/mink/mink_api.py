@@ -1,6 +1,6 @@
 import logging
 from time import sleep
-from typing import Final, cast
+from typing import cast
 from urllib.error import HTTPError, URLError
 import urllib.request
 import urllib.parse
@@ -12,15 +12,14 @@ import karppipeline.util.json as json
 
 logger = logging.getLogger(__name__)
 
-BASE_URL: Final[str] = "https://ws.spraakbanken.gu.se/ws/mink/dev"
-
 
 class MinkAPI:
     """
-    Helper class to do calls to the Mink backend (Mink documentation at <BASE_URL>)
+    Helper class to do calls to the Mink backend (Mink documentation at <base_url>)
     """
 
-    def __init__(self, api_key: str):
+    def __init__(self, base_url: str, api_key: str):
+        self.base_url = base_url
         self.api_key = api_key
         # Before self.init, we do not know what the resource_id is
         self._resource_id = None
@@ -40,7 +39,7 @@ class MinkAPI:
             headers = {}
         headers["X-Api-Key"] = self.api_key
 
-        request = urllib.request.Request(BASE_URL + "/" + path, headers=headers, method=method, data=data)
+        request = urllib.request.Request(self.base_url + "/" + path, headers=headers, method=method, data=data)
 
         try:
             if not DRY_RUN or method == "GET":

@@ -6,6 +6,7 @@ from typing import Any, Iterator, Callable, Self
 import unicodedata
 from karppipeline.common import PipelineException
 from karppipeline.models import EntrySchema, ExportFieldConfig, PipelineConfig, Entry, InferredField
+from karppipeline.util.importlib import import_module
 
 logger = logging.getLogger(__name__)
 
@@ -32,20 +33,20 @@ class ConverterImporter:
 
         ref = converter.split(".")
         if len(ref) == 2:
+            # built-in module used
             [module, func] = ref
             mod = importlib.import_module("karppipeline.converters." + module)
         else:
             if not self.loaded_mods:
                 # plugin directories are inherited like configuration parents. load all the plugins found at this point.
                 for plugin_file_path in self.config.plugin_files:
-                    spec = importlib.util.spec_from_file_location("plugin", plugin_file_path)
-                    if not spec or not spec.loader:
+                    mod = import_module(plugin_file_path)
+                    if mod:
+                        self.loaded_mods.append(mod)
+                    else:
                         raise PipelineException(
                             "Resource is trying to use an unqualified function (X:Z as Y), but no code file was found for resource."
                         )
-                    mod = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(mod)
-                    self.loaded_mods.append(mod)
 
             func = ref[0]
             for mod in self.loaded_mods:

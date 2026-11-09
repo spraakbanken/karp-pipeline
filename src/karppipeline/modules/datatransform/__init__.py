@@ -9,6 +9,7 @@ from karppipeline.models import Entry, EntrySchema, PipelineConfig
 
 from karppipeline.common import create_output_dir
 from karppipeline.modules.datatransform.flatten import flatten_entry_schema, flatten_source_order, recursive_flatten
+from karppipeline.util.importlib import import_module
 
 __all__ = ["export", "dependencies"]
 logger = logging.getLogger(__name__)
@@ -82,27 +83,24 @@ def _load_user_defined_functions(
     # check if there is a user-defined function to transform
     f = plugin_dir / "transform.py"
     if f.exists():
-        spec = importlib.util.spec_from_file_location("plugin", f)
-        if spec and spec.loader:
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-            if hasattr(mod, "transform"):
-                # transform must be defined
-                data_flatten_fun = mod.transform
+        mod = import_module(f)
+        if mod and hasattr(mod, "transform"):
+            # transform must be defined
+            data_flatten_fun = mod.transform
 
-                def identity(x):
-                    return x
+            def identity(x):
+                return x
 
-                if hasattr(mod, "update_schema"):
-                    schema_flatten_fun = mod.update_schema
-                else:
-                    schema_flatten_fun = identity
-                if hasattr(mod, "update_source_order"):
-                    source_order_flatten_fun = mod.update_source_order
-                else:
-                    source_order_flatten_fun = identity
+            if hasattr(mod, "update_schema"):
+                schema_flatten_fun = mod.update_schema
+            else:
+                schema_flatten_fun = identity
+            if hasattr(mod, "update_source_order"):
+                source_order_flatten_fun = mod.update_source_order
+            else:
+                source_order_flatten_fun = identity
 
-                return data_flatten_fun, schema_flatten_fun, source_order_flatten_fun
+            return data_flatten_fun, schema_flatten_fun, source_order_flatten_fun
     return None
 
 

@@ -113,6 +113,35 @@ Despite its name, this is the module that calls converters and creates the final
 
 Only an exporter, simply writes each entry to a JSONL file.
 
+## datatransform
+
+This module is used by Karp-s to flatten data. If a source lexicon has a level of nesting not
+supported in Karp-s it can be flattened. This works well on an entry like this (YAML):
+
+```
+a:
+  b: [val1,val2]
+```
+
+which can be transformed to:
+
+```
+a.b: [val1,val2]
+```
+
+For more complex cases, the user can supply a plugin file with functions for flattening:
+- schema
+- entry
+- source order
+
+A file called `transform.py` should be added to `plugins/` in the resource directory, with
+the following functions:
+- `def update_schema(entry_schema: EntrySchema)` - edit schema in place
+- `def update_source_order(source_order: list[tuple[str, list]]) -> list[str]` - turn the recursive sort order into a flat list
+- `def transform(entry: Entry) -> Iterable[Entry]` - transform entry and optionally turn it into multiple entries
+ 
+ The transformation done in `transform` should be reflected by the schema change.
+
 ### dataupload
 
 Only an installer. Will move the JSONL file to the specified location (on a server or locally).
@@ -147,11 +176,25 @@ and settings from the pipeline configuration.
 configuration files to the Karp sök configuration folder and calls `karp-s-cli add <resource>` which will integrate the configuration and make sure the backend sees the
 new resource.
 
+If resource has `protected_metadata`, every field will be namespaced with `_<resource_id>_` in the version installed in Karp search mode. A resource called `fruits` with a field `kind` will result in the following SQL and Karp-s configuration file:
+
+SQL: ``INSERT INTO fruits(`_fruits_kind`) VALUES (...)``
+
+Resource (Karp-s) config:
+```
+fields:
+  - name: _fruits_kind
+    primary: true
+entry_word:
+  field: _fruits_kind
+  description: ...
+```
+
 ### mink
 
 **Export** does nothing
 
-**Install** Uses [SBX Mink](https://spraakbanken.gu.se/en/tools/mink) API to create a resource and install it in Karp sök through Mink. This
+**Install** Uses [SBX Mink](https://spraakbanken.gu.se/en/tools/mink) API to create a resource and install it in Karp sök and Karp red through Mink. This
 is useful for external users of Mink/Karp sök who want to have a CLI option to the interface.
 
 ## Multiple instances of installers
@@ -244,8 +287,8 @@ def to_ud(_, pos):
 And to use this in a field: `my_pos:mymod.to_ud as upos`
 
 Converters can be implemented outside the codebase by adding a
-directory called `plugins` to the resource directory. To this directory
-Python code files can be added with the same methods as described before.
+directory called `plugins/field_converter` to the resource directory.
+Python code files can be added to this directory with the same methods as described before.
 When adding converters this way, the export field setting should only contain
 the function name and not module name (`<field name>:<converter> as <new_field_name>`).
 

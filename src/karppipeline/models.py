@@ -298,12 +298,13 @@ class PipelineConfig(BaseModel):
                 return
 
             if parent := module.pop("parent", None):
+                if parent not in resolved:
+                    resolve_inheritance(parent, self.modules.get(parent, {}))
                 if parent in resolved:
                     _merge(resolved[parent], module)
-                elif parent in self.modules:
-                    resolve_inheritance(parent, self.modules[parent])
                 else:
                     raise PipelineException(f"Module parent for {module_name}: {parent} not found")
+
             resolved[module_name] = module
 
         for module_name, module in self.modules.items():

@@ -136,7 +136,7 @@ def import_(pipeline_config: PipelineConfig, instance=MODULE_NAME):
     """
     karp_red_config = KarpRedConfig.model_validate(pipeline_config.modules[instance])
 
-    output_dir = Path("output/karp_red")
+    output_dir = Path(pipeline_config.workdir / "output/karp_red")
     output_dir.mkdir(exist_ok=True)
     karp_red_output = output_dir.absolute() / "import.jsonl"
 

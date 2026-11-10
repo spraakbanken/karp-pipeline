@@ -127,15 +127,16 @@ def _find_configs() -> Iterator[ConfigHandle]:
     current_dir_config = target_config
 
     def find_children(
-        path: Path, parent: Map | None, parent_config_paths
-    ) -> list[tuple[dict[str, Any], list[Path], list[str]]]:
+        path: Path, parent: Map | None, parent_config_paths, child_plugin_paths
+    ) -> list[tuple[dict[str, Any], list[Path], list[str], list[set[Path]]]]:
         children = []
         warnings = []
         for dir in path.iterdir():
             if dir.is_dir():
+                dir_plugin_paths = list(child_plugin_paths)
                 config, tmp_plugin_paths = read_config(dir)
                 if config:
-                    plugin_paths.append(tmp_plugin_paths)
+                    dir_plugin_paths.append(tmp_plugin_paths)
                     if "parent" in config:
                         parent_path = Path(cast(str, config["parent"])).parent
                         if not parent_path.is_absolute():
@@ -144,7 +145,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
                         other_parent, tmp_plugin_paths = read_config(parent_path)
                         if not other_parent:
                             raise PipelineException(f"config: could not find parent ({path})")
-                        plugin_paths.append(tmp_plugin_paths)
+                        dir_plugin_paths.append(tmp_plugin_paths)
                         if "parent" in other_parent:
                             warnings.append(
                                 "A parent config contains `parent`-key which is not supported and will be ignored."
@@ -152,7 +153,7 @@ def _find_configs() -> Iterator[ConfigHandle]:
                         new_config = _merge_configs(other_parent, config)
                     else:
                         new_config = _merge_configs(parent, config)
-                    new_children = find_children(dir, new_config, parent_config_paths + [dir])
+                    new_children = find_children(dir, new_config, parent_config_paths + [dir], dir_plugin_paths)
                     if new_children:
                         for child in new_children:
                             child[2].extend(warnings)
@@ -160,21 +161,22 @@ def _find_configs() -> Iterator[ConfigHandle]:
                     else:
                         # insert workdir so we can find the correct place later
                         new_config["workdir"] = dir
-                        children.append((new_config, parent_config_paths + [dir], warnings))
+                        children.append((new_config, parent_config_paths + [dir], warnings, dir_plugin_paths))
         return children
 
-    children = find_children(start_path, current_dir_config, parent_config_paths)
+    children = find_children(start_path, current_dir_config, parent_config_paths, list(plugin_paths))
 
     if not children and current_dir_config:
         # if there were no child configs found, add the current dir as the config
         current_dir_config["workdir"] = start_path
-        children.append((current_dir_config, parent_config_paths, warnings))
+        children.append((current_dir_config, parent_config_paths, warnings, plugin_paths))
 
-    for child, parent_config_paths, warnings in children:
+    for child, parent_config_paths, warnings, child_plugin_paths in children:
         child.pop("parent", None)
+        plugin_files = list({path for ls in child_plugin_paths for path in ls})
         yield ConfigHandle(
             workdir=child["workdir"],
-            plugin_files=list({path for ls in plugin_paths for path in ls}),
+            plugin_files=plugin_files,
             config_dict=child,
             parents=[str(path.absolute().resolve()) for path in parent_config_paths],
             warnings=warnings,

@@ -111,8 +111,9 @@ def suc_to_ud(_, pos: str) -> str:
         "MAD": Upos.PUNCT,
         "MID": Upos.PUNCT,
         "PAD": Upos.PUNCT,
+        None: Upos.X,
     }
-    return pos_dict.get(pos.upper(), UD_FALLBACK)
+    return pos_dict.get(pos.upper() if pos else None, UD_FALLBACK)
 
 
 def isof_to_ud_update_schema(field: InferredField) -> InferredField:
@@ -145,6 +146,7 @@ _saldo_pos_to_suc = {
     "nn": "NN",
     "av": "JJ",
     "vb": "VB",
+    "vba": "VB",
     "pm": "PM",
     "ab": "AB",
     "in": "IN",
@@ -175,6 +177,10 @@ _saldo_pos_to_suc = {
     "nlm": "RG",  # not RO
     "al": "DT",
     "pma": "PM",
+    # prefixes - no alternative in SUC
+    "sxc": None,
+    "mxc": None,
+    "nnh": None,
 }
 
 _isof_nyord_to_ud = {

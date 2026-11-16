@@ -88,18 +88,21 @@ def get_entry_converter(
     for field in converted_fields:
         if field.exclude:
             # remove exluded field from schema (it might not be there)
-            tmp: EntrySchema = entry_schema
-            parts = field.name.split(".")
-            aborted = False
-            for part in parts[:-1]:
-                thing = tmp.get(part)
-                if thing:
-                    tmp = thing.fields
-                else:
-                    aborted = True
-                    break
-            if not aborted:
-                tmp.pop(parts[-1], None)
+            if field.name in entry_schema:
+                entry_schema.pop(field.name)
+            else:
+                tmp: EntrySchema = entry_schema
+                parts = field.name.split(".")
+                aborted = False
+                for part in parts[:-1]:
+                    thing = tmp.get(part)
+                    if thing:
+                        tmp = thing.fields
+                    else:
+                        aborted = True
+                        break
+                if not aborted:
+                    tmp.pop(parts[-1], None)
         else:
             if field.name == "*":
                 # the converter must set the schema, placeholder value

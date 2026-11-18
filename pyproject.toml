@@ -6,19 +6,18 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "jsonschema-rs==0.42.1",
-    "pydantic==2.12.5",
+    "pydantic==2.14.1",
     "pyyaml==6.0.3",
     "orjson==3.11.7",
 ]
 
 [dependency-groups]
-dev = ["ruff", "pytest", "basedpyright"]
+dev = ["ruff==0.15.2", "pytest", "basedpyright"]
 
 [project.scripts]
 karp-pipeline = "karppipeline.cli:cli"
 
 [tool.uv]
 package = true
-exclude-newer = "90 days"
+exclude-newer = "30 days"
 add-bounds = "major"
-

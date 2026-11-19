@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Any, Iterator, cast
 
+from pydantic import ValidationError
 from yaml import MarkedYAMLError, YAMLError
 from karppipeline.common import PipelineException, Map
 from karppipeline.models import PipelineConfig
@@ -33,7 +34,11 @@ def load_config(config_handle: ConfigHandle, ignore_validation=False) -> Pipelin
     if ignore_validation:
         return PipelineConfig.model_construct(**config_dict)
     else:
-        return PipelineConfig.model_validate(config_dict)
+        try:
+            return PipelineConfig.model_validate(config_dict)
+        except ValidationError as e:
+            logger.error(str(e))
+            raise PipelineException("Invalid YAML configuration file") from e
 
 
 def find_configs() -> list[ConfigHandle]:

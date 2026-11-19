@@ -259,9 +259,9 @@ def cli():
                 print(f"{green_box()} {config.resource_id}\t success")
         except Exception as e:
             if isinstance(e, PipelineException):
-                logger.error(f"Exception for resource: {e.args[0]}")
+                logger.error(f"{e.args[0]}")
             else:
-                logger.error("Exception for resource", exc_info=True)
+                logger.error("Unknown error", exc_info=True)
             if compact_output:
                 print(f"{red_box()} {config_handle.workdir}\t fail")
             else:

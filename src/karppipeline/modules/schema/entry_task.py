@@ -137,7 +137,10 @@ def get_entry_converter(
             return converters[converter]["convert"](config.resource_id, val)
         return val
 
+    # TODO what about recursive fields
     categorical_fields = {field.name: field for field in config.fields if field.categories}
+    # TODO if a sub-field is required, the parent must also be - can be fixed in model - but we still need to check sub-fields.
+    required_fields = [field.name for field in config.fields if field.required]
 
     def convert(entry: Entry | None) -> Entry | None:
         if not entry:
@@ -206,6 +209,11 @@ def get_entry_converter(
                     raise PipelineException(
                         f"{val} not a valid category in field {key} (Allowed: {', '.join(field.categories)})"
                     )
+
+            # check that required fields are there *after* all conversions
+            # TODO again, this needs to be check recursively
+            if key in required_fields and (key not in new_entry or new_entry[key] is None):
+                raise PipelineException(f"Missing required value. Field: {key}")
 
         return new_entry
 

@@ -70,6 +70,9 @@ def _create_karp_backend_config(config: PipelineConfig, entry_schema: EntrySchem
             if conf_field and conf_field.params:
                 dumped["params"] = conf_field.params
 
+            if conf_field and conf_field.required:
+                dumped["required"] = conf_field.required
+
             if field.type == "text":
                 dumped["type"] = "string"
             if field.type == "object":

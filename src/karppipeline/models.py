@@ -5,17 +5,22 @@ from pathlib import Path
 import re
 from typing import Any, Self, cast
 from pydantic import (
+    MISSING,
     BaseModel,
     ConfigDict,
     Field,
     RootModel,
+    create_model,
     field_serializer,
     field_validator,
     computed_field,
     model_validator,
 )
+from pydantic.json_schema import SkipJsonSchema
 
+import karppipeline
 from karppipeline.common import PipelineException
+import karppipeline.modules
 
 
 type Entry = Mapping[str, object]
@@ -146,16 +151,26 @@ class FieldTypeEnum(str, Enum):
 class ConfiguredField(BaseModel):
     model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
+    # the (machine) name of the field
     name: str
+    # the data type of the field
     type: FieldTypeEnum
+    # if the field is a list or a single value
     collection: bool = False
+    # if the field must have a non-null value or if it can omitted
+    required: bool = False
+    # if type is "object" - the list of sub-fields
     fields: list[Self] = Field(default_factory=list)
-    label: NonEmptyMultiLang | None = None
+    # the label of the field. can be a single string label or a dictionary of lang codes -> label
+    label: NonEmptyMultiLang | SkipJsonSchema[None] = None
+    # if the field consists of categorical values, such as a POS-tag set
     categorical: bool = False
+    # the available categories for a field (if categorical: true)
     categories: list[str] = Field(default_factory=list)
+    # optional labels for the categories
     category_labels: dict[str, NonEmptyMultiLang] = Field(default_factory=dict)
     # sub-type / class - can be used for plugins or other systems.
-    kind: str | None = None
+    kind: str | SkipJsonSchema[None] = None
     # can be used for miscellaneous information needed by other systems.
     params: dict[str, Any] = Field(default_factory=dict)
 
@@ -229,24 +244,19 @@ class ExportConfig(BaseModel):
     fields: list[ExportFieldConfig] = field(default_factory=list)
 
 
-class PipelineConfig(BaseModel):
-    model_config = ConfigDict(extra="allow")
+class UserPipelineConfig(BaseModel):
+    """
+    This is a subset of the real configuration, usable for setups where we do not
+    want users to edit all settings. It does not dynamically load schemas from
+    modules.
+    """
 
+    # from karppipeline.modules.karps.models import KarpsExportConfig
     resource_id: str
-    name: MultiLang | None = None
-    description: MultiLang | None = None
-    # the elements of type object will be handled by the exporters models
-    export: ExportConfig
-    # default installers
-    install: list[str] = []
-    # the elements of type object will be handled by the importers models
-    import_settings: Mapping[str, object] = Field(alias="import", default={})
-    # main field list, master order and configuration, new fields may be added or aliased to existing fields
-    # entry_word is not in this list and is always the first element, wether used directly or as alias
+    name: MultiLang | SkipJsonSchema[None] = None
+    description: MultiLang | SkipJsonSchema[None] = None
     fields: list[ConfiguredField] = field(default_factory=list)
-    workdir: Path
-    # file_path = str(plugin_path / "converters.py")
-    plugin_files: list[Path]
+
     # the reosurce should only be available to users with access
     limited_access: bool = False
     # the resource's metadata should only be available to users with access
@@ -255,6 +265,39 @@ class PipelineConfig(BaseModel):
     resource_id_as_default_name: bool = False
     # if true, description can be empty
     allow_empty_description: bool = False
+
+    @classmethod
+    def create_merged_model_for_schema(cls) -> type[BaseModel]:
+        """
+        For each installed module, check if it declares a USER_MODEL - this model needs
+        to be added as a field for the final user config, before schema generation.
+        """
+        fields = {}
+        for module in karppipeline.modules.get_available_modules():
+            if hasattr(module, "MODULE_NAME") and hasattr(module, "USER_MODEL"):
+                model: BaseModel = getattr(module, "USER_MODEL")
+                fields[module.MODULE_NAME] = (model | MISSING, MISSING)
+        return create_model(
+            cls.__name__,
+            __base__=cls,
+            **fields,
+        )
+
+
+class PipelineConfig(UserPipelineConfig):
+    model_config = ConfigDict(extra="allow")
+
+    # the elements of type object will be handled by the exporters models
+    export: ExportConfig
+    # default installers
+    install: list[str] = []
+    # the elements of type object will be handled by the importers models
+    import_settings: Mapping[str, object] = Field(alias="import", default={})
+    # main field list, master order and configuration, new fields may be added or aliased to existing fields
+    # entry_word is not in this list and is always the first element, wether used directly or as alias
+    workdir: Path
+    # file_path = str(plugin_path / "converters.py")
+    plugin_files: list[Path]
 
     @property
     def modules(self) -> dict[str, dict[str, object]]:

@@ -7,6 +7,7 @@ from karppipeline.execution.dependency import Dependency
 from karppipeline.modules import datatransform
 import karppipeline.modules.karps_config.install as backend_install
 from karppipeline.modules.karps.models import (
+    KarpsExportConfig,
     get_export_config,
     get_install_config,
 )
@@ -23,6 +24,8 @@ __all__ = ["export", "install", "dependencies"]
 logger = logging.getLogger(__name__)
 
 MODULE_NAME: Final[str] = "karps"
+# simplified schema without settings for hosts, paths etc.
+USER_MODEL: Final[type[KarpsExportConfig]] = KarpsExportConfig
 
 dependencies = [
     Dependency("sbxmetadata", optional=True),

@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-
 from karppipeline.util.logging import log_latest_commit_id
 from karppipeline.util.terminal import bold, green_box, red_box
 
@@ -62,6 +61,14 @@ def print_config(configs: list["ConfigHandle"], resource_id: str | None = None) 
         print(json.dumps(config.config_dict, pretty=True))
 
 
+def print_user_config_json_schema() -> None:
+    from karppipeline.util import json
+    from karppipeline.models import UserPipelineConfig
+
+    schema = UserPipelineConfig.create_merged_model_for_schema().model_json_schema()
+    print(json.dumps(schema))
+
+
 def parse_args() -> argparse.Namespace:
     """
     Defines the pipeline CLI input, writes any requested help text and parses the input.
@@ -97,9 +104,22 @@ def parse_args() -> argparse.Namespace:
     # TODO reimplement as module
     p_print_config = subparsers.add_parser(
         "print-config",
-        help="helper to see the configuration",
+        help="helper to see the (concrete) configuration. Note: will print out any secrets from a parent configuration!",
     )
     p_print_config.add_argument("resource_id", nargs="?")
+
+    subparsers.add_parser(
+        "print-user-config-json-schema",
+        help=f"""
+prints the JSON schema for the pipeline {bold("user")} configuration.
+
+This is not the complete schema available for installers of the pipeline, but rather a schema that can be used to validate
+external users configurations.
+
+The schema is currently *not* enforced for any configurations, so if users can input their own schema, they can change
+ settings that are in the main pipeline configuration.
+        """,
+    )
 
     def add_output_params(p: argparse.ArgumentParser):
         group = p.add_mutually_exclusive_group()
@@ -179,6 +199,11 @@ def parse_args() -> argparse.Namespace:
 
 def cli():
     args = parse_args()
+
+    # This command does not depend on an actual configuration being available
+    if args.command == "print-user-config-json-schema":
+        print_user_config_json_schema()
+        return 0
 
     # If help was invoked, parse_args will exit. Imports go after parse_args so that help is generated as fast as possible
     import logging

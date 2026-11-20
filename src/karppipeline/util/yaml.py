@@ -36,6 +36,7 @@ def construct_mapping(loader, node, deep=False):
     return mapping
 
 
+# Without UniqueKeyLoader, py-yaml lets user define a key twice
 UniqueKeyLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
     construct_mapping,

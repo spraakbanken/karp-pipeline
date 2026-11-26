@@ -1,3 +1,4 @@
+from functools import partial
 import time
 from typing import Iterable, Iterator, Mapping
 
@@ -5,6 +6,7 @@ from typing import Iterable, Iterator, Mapping
 from karppipeline.common import PipelineException, create_output_dir
 from karppipeline.modules.karps.models import KarpsExportConfig
 from karppipeline.models import EntrySchema, PipelineConfig
+from karppipeline.modules.karps.namespace import add_namespace_to_field
 from karppipeline.util import yaml
 
 
@@ -20,7 +22,12 @@ def create_karps_backend_config(
 
     fields: list[dict[str, object]] = []
     # collected_categories = module_data["generate_categorical_values"]
-    configured_fields = {field.name: field for field in pipeline_config.fields}
+    namespacer = (
+        partial(add_namespace_to_field, pipeline_config.resource_id)
+        if pipeline_config.protected_metadata
+        else lambda x: x
+    )
+    configured_fields = {namespacer(field.name): field for field in pipeline_config.fields}
     for field in entry_schema.values():
         field_dict = field.asdict()
         # TODO make sure this works for sub-fields

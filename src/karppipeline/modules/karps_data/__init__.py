@@ -1,3 +1,4 @@
+from functools import cache, partial
 import logging
 from typing import Callable, Final
 
@@ -10,7 +11,7 @@ from karppipeline.modules.karps.models import (
 )
 from karppipeline.models import Entry, EntrySchema, PipelineConfig
 import karppipeline.modules.karps_data.export as backend_export
-from karppipeline.modules.karps.namespace import add_namespace_to_field
+from karppipeline.modules.karps.namespace import add_namespace_to_field, add_namespace_to_schema
 
 """
 generate Karp-s backend configuration and SQL, could be broken up into two tasks
@@ -32,7 +33,11 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
     Create configuration and SQL data file for Karp-s backend
     """
     # use entry_schema from karps_config and not schema module
-    entry_schema: EntrySchema = module_data["karps_config"]
+    entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
+
+    if config.protected_metadata:
+        # if protected_metadata, prefix field name with namespace in entry_schema
+        entry_schema = add_namespace_to_schema(config.resource_id, entry_schema)
 
     create_output_dir(config.workdir)
     karps_workdir = create_output_dir(config.workdir) / "karps"
@@ -45,6 +50,8 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
 
     next(sql_gen)
 
+    namespacer = cache(partial(add_namespace_to_field, config.resource_id))
+
     def task(entry: Entry | None) -> Entry | None:
         nonlocal sql_gen
         logger.debug("karps entry task")
@@ -53,7 +60,7 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
             if entry and config.protected_metadata:
                 new_entry = {}
                 for key, val in entry.items():
-                    new_entry[add_namespace_to_field(config.resource_id, key)] = val
+                    new_entry[namespacer(key)] = val
             sql_gen.send(new_entry)
         except StopIteration:
             # if this happens, the entries are exhausted

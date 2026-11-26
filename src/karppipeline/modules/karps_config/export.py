@@ -4,7 +4,7 @@ from typing import Iterable, Iterator, Mapping
 
 
 from karppipeline.common import PipelineException, create_output_dir
-from karppipeline.modules.karps.models import KarpsExportConfig
+from karppipeline.modules.karps.models import EntryWord, KarpsExportConfig
 from karppipeline.models import EntrySchema, PipelineConfig
 from karppipeline.modules.karps.namespace import add_namespace_to_field
 from karppipeline.util import yaml
@@ -22,12 +22,14 @@ def create_karps_backend_config(
 
     fields: list[dict[str, object]] = []
     # collected_categories = module_data["generate_categorical_values"]
+
     namespacer = (
         partial(add_namespace_to_field, pipeline_config.resource_id)
         if pipeline_config.protected_metadata
         else lambda x: x
     )
-    configured_fields = {namespacer(field.name): field for field in pipeline_config.fields}
+
+    configured_fields = {field.name: field for field in pipeline_config.fields}
     for field in entry_schema.values():
         field_dict = field.asdict()
         # TODO make sure this works for sub-fields
@@ -46,13 +48,11 @@ def create_karps_backend_config(
                 field_dict["kind"] = conf_field.kind
 
         if "label" not in field_dict:
-            if pipeline_config.protected_metadata:
-                field_dict["label"] = field.name.split(f"_{pipeline_config.resource_id}_")[1]
-            else:
-                field_dict["label"] = field.name
+            field_dict["label"] = field.name
 
         if pipeline_config.protected_metadata:
             field_dict["protected_metadata"] = True
+            field_dict["name"] = namespacer(field.name)
 
         fields.append(field_dict)
 
@@ -107,14 +107,24 @@ def create_karps_backend_config(
             else:
                 # if primary/secondary is not configured, all fields are primary
                 is_primary = True
-            yield {"name": field, "primary": is_primary}
+
+            field_name = namespacer(field)
+            yield {"name": field_name, "primary": is_primary}
+
+    def make_entry_word(entry_word: EntryWord) -> dict[str, object]:
+        """
+        Simply dump, but also replace field name with namespaced name if resource has protected metadata
+        """
+        dumped = karps_config.entry_word.model_dump()
+        dumped["field"] = namespacer(entry_word.field)
+        return dumped
 
     final_field_list = order_fields(list(entry_schema.keys()))
     backend_config = {
         "resource_id": pipeline_config.resource_id,
         "label": name or pipeline_config.resource_id,
         "fields": list(make_field_config(final_field_list)),
-        "entry_word": karps_config.entry_word.model_dump(),
+        "entry_word": make_entry_word(karps_config.entry_word),
         "size": size,
         "link": karps_config.link,
         "updated": int(time.time()),

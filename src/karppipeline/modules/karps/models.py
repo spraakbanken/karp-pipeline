@@ -2,7 +2,6 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from karppipeline.models import ExportFieldConfig, MultiLang
-from karppipeline.modules.karps.namespace import add_namespace_to_field, add_namespace_to_fields
 
 
 class Tag(BaseModel):
@@ -57,11 +56,6 @@ def get_export_config(config, instance):
     # run karps_config
 
     module_config = KarpsExportConfig.model_validate(config.modules[instance])
-    if config.protected_metadata:
-        # update entry_word, primary and secondary
-        module_config.entry_word.field = add_namespace_to_field(config.resource_id, module_config.entry_word.field)
-        module_config.primary = add_namespace_to_fields(config.resource_id, module_config.primary)
-        module_config.secondary = add_namespace_to_fields(config.resource_id, module_config.secondary)
     return module_config
 
 

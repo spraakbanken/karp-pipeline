@@ -1,5 +1,4 @@
 import logging
-import pickle
 from typing import Callable, Final
 
 from karppipeline.common import PipelineException, create_output_dir
@@ -13,7 +12,6 @@ from karppipeline.modules.karps.models import (
 )
 from karppipeline.models import Entry, EntrySchema, MultiLang, PipelineConfig
 import karppipeline.modules.karps_config.export as backend_export
-from karppipeline.modules.karps.namespace import add_namespace_to_fields, add_namespace_to_schema
 from karppipeline.modules.schema.entry_task import get_entry_converter
 
 """
@@ -49,14 +47,6 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
     # updates entry_schema in place
     entry_converter = get_entry_converter(config, module_config.export_fields, entry_schema)
 
-    if config.protected_metadata:
-        # if a resource uses protected_metadata: true, we will use the resource ID as a namespace
-        modified_entry_schema = add_namespace_to_schema(config.resource_id, entry_schema)
-        modified_source_order = add_namespace_to_fields(config.resource_id, source_order)
-    else:
-        modified_entry_schema = entry_schema
-        modified_source_order = source_order
-
     # fallback value because sbxmetadata is optional
     sbxmetadata = module_data["sbxmetadata"] or {}
     name = sbxmetadata.get("name") or config.name and config.name.model_dump()
@@ -83,26 +73,13 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
         logger.debug("karps entry task")
         if entry is None:
             backend_export.create_karps_backend_config(
-                config, module_config, name, description, modified_entry_schema, modified_source_order, karps_size[0]
+                config, module_config, name, description, entry_schema, source_order, karps_size[0]
             )
             return None
         karps_size[0] += 1
         return entry_converter(entry)
 
-    # save the maybe namespaced entry schema for usage in karps_data
-    with open(_get_data_path(config), "wb") as fp:
-        pickle.dump(modified_entry_schema, fp)
-
     return task
-
-
-def load(config) -> dict[str, object]:
-    with open(_get_data_path(config), "rb") as fp:
-        return pickle.load(fp)
-
-
-def _get_data_path(config: PipelineConfig):
-    return create_output_dir(config.workdir) / "karps/schema.pickle"
 
 
 def install(pipeline_config: PipelineConfig, uninstall=False, instance=MODULE_NAME):

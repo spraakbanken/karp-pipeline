@@ -11,9 +11,5 @@ def add_namespace_to_schema(namespace: str, schema: EntrySchema) -> EntrySchema:
     return new_schema
 
 
-def add_namespace_to_fields(namespace, fields: list[str]) -> list[str]:
-    return [add_namespace_to_field(namespace, field) for field in fields]
-
-
 def add_namespace_to_field(namespace: str, field: str) -> str:
     return "_" + namespace + "_" + field

@@ -7,8 +7,10 @@ from karppipeline.execution.dependency import Dependency
 from karppipeline.modules import datatransform
 import karppipeline.modules.karps_data.install as backend_install
 from karppipeline.modules.karps.models import (
+    TableMetadata,
     get_export_config,
     get_install_config,
+    get_table_metadata,
 )
 from karppipeline.models import Entry, EntrySchema, PipelineConfig
 import karppipeline.modules.karps_data.export as backend_export
@@ -78,6 +80,7 @@ def install(pipeline_config: PipelineConfig, uninstall=False, instance=MODULE_NA
     """
     karps_config = get_install_config(pipeline_config, instance)
     if not uninstall:
-        backend_install.add_to_db(pipeline_config, karps_config)
+        tables_metadata: list[TableMetadata] = get_table_metadata(pipeline_config)
+        backend_install.add_to_db(pipeline_config, karps_config, tables_metadata)
     else:
         backend_install.remove_from_db(pipeline_config, karps_config)

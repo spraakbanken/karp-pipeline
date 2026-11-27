@@ -110,10 +110,9 @@ def test_namespacing(resource):
 def _count_entries_sql(resource: TestResource) -> int:
     # Counts inserts into main table, not list values
     count = 0
-    with open(resource.output_path / "karps/create.sql") as fp:
-        for line in fp.readlines():
-            if f"INSERT INTO `{resource.resource_id}`" in line:
-                count += 1
+    with open(resource.output_path / f"karps/{resource.resource_id}.csv") as fp:
+        for _ in fp.readlines():
+            count += 1
     return count
 
 

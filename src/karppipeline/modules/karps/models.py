@@ -1,7 +1,25 @@
+from dataclasses import dataclass
 from pathlib import Path
+import pickle
+from typing import Final, Sequence
 from pydantic import BaseModel
 
-from karppipeline.models import ExportFieldConfig, MultiLang
+from karppipeline.common import create_output_dir, get_output_dir
+from karppipeline.models import ExportFieldConfig, MultiLang, PipelineConfig
+
+
+table_metadata_file: Final[str] = "tablemetadata.pickle"
+
+
+@dataclass
+class TableMetadata:
+    csv_file: Path
+    table: str
+    columns: Sequence[str]
+
+    @property
+    def columns_str(self):
+        return f"({', '.join((['`' + column + '`' for column in self.columns]))})"
 
 
 class Tag(BaseModel):
@@ -65,3 +83,15 @@ def get_install_config(config, instance):
         instance = "karps"
 
     return KarpsInstallConfig.model_validate(config.modules[instance])
+
+
+def save_table_metadata(config: PipelineConfig, tables_metadata: list[TableMetadata]):
+    path = create_output_dir(config.workdir) / "karps" / table_metadata_file
+    with open(path, "wb") as fp:
+        pickle.dump(tables_metadata, fp)
+
+
+def get_table_metadata(config):
+    path = get_output_dir(config.workdir) / "karps" / table_metadata_file
+    with open(path, "rb") as fp:
+        return pickle.load(fp)

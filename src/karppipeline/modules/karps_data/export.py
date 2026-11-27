@@ -2,7 +2,7 @@ from typing import Generator, Iterable
 
 
 from karppipeline.common import PipelineException, get_output_dir
-from karppipeline.modules.karps.models import KarpsExportConfig
+from karppipeline.modules.karps.models import KarpsExportConfig, TableMetadata, save_table_metadata
 from karppipeline.models import Entry, EntrySchema, PipelineConfig, InferredField
 
 VARCHAR_CUTOFF = 400  # if a field contains values larger than this, use TEXT type and skip indexing
@@ -64,6 +64,7 @@ def create_karps_sql(
                     for idx, (col_name, inner_field) in enumerate(columns.items()):
                         if inner_field.type == "text" and inner_field.length <= VARCHAR_CUTOFF:
                             indices.append(
+                                # TODO add __id
                                 f"CREATE INDEX `{inner_table_name[0:55]}_{idx}_idx` ON `{inner_table_name}`(`{col_name}`({inner_field.extra['length']}));"
                             )
                 else:
@@ -105,19 +106,19 @@ def create_karps_sql(
             delete_stmt,
         )
 
-    def entries_sql() -> Generator[list[str], Entry | None, None]:
+    def entries_sql() -> Generator[tuple[dict[str, list[str]], str], Entry | None, None]:
         idx = 0
-        lines = []
+        join_rows, row = {}, ""
         while True:
-            entry = yield lines
+            entry = yield join_rows, row
             if entry is None:
                 break
 
             def format_str(val):
                 """
-                Wrap string in single quotes, escape backslashes and single quotes
+                escape backslashes, tabs and newlines
                 """
-                return f"'{val.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n')}'"
+                return val.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n")
 
             def format_value(val):
                 if val is None:
@@ -127,7 +128,7 @@ def create_karps_sql(
                 elif isinstance(val, int) or isinstance(val, float):
                     return str(val)
                 elif isinstance(val, dict):
-                    return ",".join([format_value(v) for v in val.values()])
+                    return "\t".join([format_value(v) for v in val.values()])
                 else:
                     raise PipelineException(f"unknown column type  in data: {type(val)}")
 
@@ -136,51 +137,75 @@ def create_karps_sql(
                 if values are scalar, they must be formatted/encoded in a wway that makes sense for MySQL
                 if values are lists, they must be transformed into a separate INSERT statement with a ref to parent (idx from closure)
                 """
-                inserts = []
-                columns = []
-                main_values = []
+                inserts = {}
+                main_values = [str(idx)]
                 for field_name, val in entry.items():
                     if isinstance(val, list):
                         for x in val:
-                            if isinstance(x, dict):
-                                keys = x.keys()
-                            else:
-                                keys = [field_name]
-                            inserts.append(
-                                f"INSERT INTO `{pipeline_config.resource_id}__{field_name}` (__parent_id, {','.join(f'`{key}`' for key in keys)}) VALUES ({idx}, {format_value(x)});\n"
-                            )
+                            if field_name not in inserts:
+                                inserts[field_name] = []
+
+                            inserts[field_name].append("\t".join([str(idx), format_value(x)]))
                     elif val is not None:
-                        columns.append(field_name)
                         main_values.append(format_value(val))
-                return inserts, columns, main_values
 
-            inserts, columns, values = sqlify_values(entry)
+                return inserts, "\t".join(main_values)
 
-            # main entry
-            lines = [
-                f"INSERT INTO `{pipeline_config.resource_id}` (`__id`, {', '.join(f'`{column}`' for column in columns)}) VALUES ({idx}, {', '.join(values)});\n"
-            ] + inserts
+            join_rows, row = sqlify_values(entry)
 
             idx += 1
 
+    tables_metadata = []  # collects the information needed to run each csv file
     sql_gen = entries_sql()
     next(sql_gen)
     schema_sql, indices, delete_statement = schema(pipeline_config.resource_id, resource_config)
-    # one file for creating the resource, also deletes previous versions of resource
-    with open(get_output_dir(pipeline_config.workdir) / "karps/create.sql", "w") as fp:
+
+    path = get_output_dir(pipeline_config.workdir) / "karps"
+    main_csv_path = path / f"{pipeline_config.resource_id}.csv"
+    columns = [field.name for field in resource_config.values() if not field.collection]
+    tables_metadata = [
+        TableMetadata(csv_file=main_csv_path, table=pipeline_config.resource_id, columns=("__id", *columns))
+    ]
+
+    join_table_files = {}
+    for field_name, field in resource_config.items():
+        if field.collection:
+            csv_path = path / f"{pipeline_config.resource_id}__{field_name}.csv"
+            fp = open(csv_path, "w")
+            join_table_files[field_name] = fp
+            tables_metadata.append(
+                TableMetadata(
+                    csv_file=csv_path,
+                    table=f"{pipeline_config.resource_id}__{field_name}",
+                    columns=["__parent_id", field_name],
+                )
+            )
+
+    save_table_metadata(pipeline_config, tables_metadata)
+
+    with open(path / "create.sql", "w") as fp:
         fp.write("SET SESSION max_statement_time = 0;")
         fp.write(delete_statement)
         fp.write(schema_sql)
-        fp.write("SET FOREIGN_KEY_CHECKS = 0; SET UNIQUE_CHECKS = 0; SET AUTOCOMMIT = 0;")
-        while True:
-            entry = yield
-            if not entry:
-                fp.write(indices)
-                fp.write("COMMIT; SET FOREIGN_KEY_CHECKS = 1; SET UNIQUE_CHECKS = 1;")
-                break
-            for line in sql_gen.send(entry):
-                fp.write(line)
+
+    with open(path / "indices.sql", "w") as fp:
+        fp.write("SET SESSION max_statement_time = 0;")
+        fp.write(indices)
+
     # one file to delete resource, used in uninstall
     with open(get_output_dir(pipeline_config.workdir) / "karps/delete.sql", "w") as fp:
         fp.write("SET SESSION max_statement_time = 0;")
         fp.write(delete_statement)
+
+    with open(main_csv_path, "w") as fp:
+        while True:
+            entry = yield
+            if not entry:
+                break
+            join_lines, line = sql_gen.send(entry)
+            fp.write(line)
+            fp.write("\n")
+            for field_name, lines in join_lines.items():
+                for line in lines:
+                    join_table_files[field_name].write(line)
+                    join_table_files[field_name].write("\n")

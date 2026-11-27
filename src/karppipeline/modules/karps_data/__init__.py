@@ -4,6 +4,7 @@ from typing import Callable, Final
 
 from karppipeline.common import create_output_dir
 from karppipeline.execution.dependency import Dependency
+from karppipeline.modules import datatransform
 import karppipeline.modules.karps_data.install as backend_install
 from karppipeline.modules.karps.models import (
     get_export_config,
@@ -33,7 +34,7 @@ def export(config: PipelineConfig, module_data, instance: str = MODULE_NAME) -> 
     Create configuration and SQL data file for Karp-s backend
     """
     # use entry_schema from karps_config and not schema module
-    entry_schema: EntrySchema = module_data["schema"]["entry_schema"]
+    entry_schema: EntrySchema = module_data[datatransform.MODULE_NAME]["entry_schema"]
 
     if config.protected_metadata:
         # if protected_metadata, prefix field name with namespace in entry_schema
